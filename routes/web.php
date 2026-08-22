@@ -19,6 +19,7 @@ Route::get('/', function () {
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::post('hallazgos/importar-excel', [ImprovementCaseController::class, 'importSpreadsheet'])->name('cases.import');
     Route::resource('hallazgos', ImprovementCaseController::class)->only(['index', 'create', 'store', 'show'])->parameters(['hallazgos' => 'case'])->names('cases');
     Route::resource('actas', MeetingMinuteController::class)->only(['index', 'create', 'store', 'show'])->parameters(['actas' => 'minute'])->names('minutes');
     Route::post('actas/{minute}/compromisos', [MeetingMinuteController::class, 'addCommitment'])->name('minutes.commitments.store');

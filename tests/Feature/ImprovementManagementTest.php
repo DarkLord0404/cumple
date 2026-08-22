@@ -152,6 +152,44 @@ class ImprovementManagementTest extends TestCase
         $this->assertStringNotContainsString('{{objetivo}}', $documentXml);
     }
 
+    public function test_institutional_excel_is_read_without_ai_and_prefills_the_finding(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $area = Area::create(['name' => 'Urgencias', 'slug' => 'urgencias']);
+        $source = FindingSource::create(['name' => 'No conforme']);
+        $upload = UploadedFile::fake()->createWithContent(
+            'reporte-institucional.xlsx',
+            file_get_contents(base_path('tests/Fixtures/institutional-finding.xlsx')),
+        );
+
+        $response = $this->actingAs($user)->post(route('cases.import'), ['excel' => $upload]);
+        $response->assertRedirect(route('cases.create'))->assertSessionHas('excel_import');
+        $import = session('excel_import');
+        $this->assertSame('NC-TEST-001', $import['institutional_consecutive']);
+        $this->assertSame($area->id, $import['reporting_area_id']);
+        $this->assertSame($source->id, $import['finding_source_id']);
+        $this->assertSame('cause_effect', $import['analysis_method']);
+        $this->assertSame(5, $import['priority_score']);
+
+        $this->actingAs($user)->post(route('cases.store'), [
+            'title' => $import['title'], 'finding_source_id' => $import['finding_source_id'],
+            'reporting_area_id' => $import['reporting_area_id'], 'reported_area_id' => $import['reported_area_id'],
+            'reported_at' => $import['reported_at'], 'action_type' => $import['action_type'],
+            'finding_description' => $import['finding_description'], 'institutional_consecutive' => $import['institutional_consecutive'],
+            'reported_person_name' => $import['reported_person_name'], 'reported_person_position' => $import['reported_person_position'],
+            'urgency_score' => $import['urgency_score'], 'scope_score' => $import['scope_score'],
+            'evolution_score' => $import['evolution_score'], 'priority_score' => $import['priority_score'],
+            'analysis_method' => $import['analysis_method'], 'temporary_path' => $import['temporary_path'],
+            'original_name' => $import['original_name'],
+        ])->assertSessionHasNoErrors();
+
+        $case = ImprovementCase::firstOrFail();
+        $this->assertSame('Persona reportante', $case->reported_person_name);
+        $this->assertCount(1, $case->documents);
+        Storage::disk('local')->assertExists($case->documents->first()->path);
+    }
+
     private function caseFixture(bool $invima = false): array
     {
         $creator = User::factory()->create();
