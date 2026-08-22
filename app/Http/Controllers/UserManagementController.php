@@ -36,6 +36,16 @@ class UserManagementController extends Controller
             'area_id' => ['nullable', 'exists:areas,id'],
             'role' => ['required', Rule::in(['administrator', 'coordinator', 'quality', 'collaborator'])],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'name.required' => 'Escribe el nombre completo.',
+            'email.required' => 'Escribe el correo del usuario.',
+            'email.email' => 'El correo no tiene un formato válido.',
+            'email.unique' => 'Ya existe un usuario con este correo.',
+            'area_id.exists' => 'El área seleccionada no es válida.',
+            'role.in' => 'El rol seleccionado no es válido.',
+            'password.required' => 'Escribe una contraseña temporal.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
         $data['password'] = Hash::make($data['password']);
         $data['email_verified_at'] = now();
