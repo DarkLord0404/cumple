@@ -28,6 +28,6 @@
             <input id="remember_me" type="checkbox" class="rounded border-slate-300 text-emerald-600 shadow-sm focus:ring-emerald-500" name="remember">
             {{ __('Remember me') }}
         </label>
-        <x-primary-button class="!flex w-full !justify-center !rounded-xl !bg-slate-950 !px-5 !py-3 hover:!bg-emerald-700">{{ __('Log in') }}</x-primary-button>
+        <x-primary-button class="w-full py-3">{{ __('Log in') }}</x-primary-button>
     </form>
 </x-guest-layout>

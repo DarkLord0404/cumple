@@ -4,9 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CUMPLE</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-950 text-white antialiased">
+<body class="min-h-screen bg-slate-950 font-sans text-white antialiased">
     <main class="relative isolate min-h-screen overflow-hidden">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,.2),_transparent_40%),radial-gradient(circle_at_bottom_left,_rgba(14,165,233,.16),_transparent_35%)]"></div>
         <div class="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-6 py-8 lg:px-10">
@@ -20,7 +22,7 @@
             <section class="grid items-center gap-14 py-16 lg:grid-cols-[1.15fr_.85fr]">
                 <div>
                     <div class="mb-6 inline-flex rounded-full border border-emerald-300/25 bg-emerald-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[.2em] text-emerald-300">Koqoi · Control institucional</div>
-                    <h1 class="max-w-4xl text-5xl font-black leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">De cada compromiso,<br><span class="text-emerald-300">una evidencia.</span></h1>
+                    <h1 class="max-w-4xl text-5xl font-extrabold leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">De cada compromiso,<br><span class="text-emerald-300">una evidencia.</span></h1>
                     <p class="mt-7 max-w-2xl text-lg leading-8 text-slate-300">Control Unificado de Metas, Pendientes, Logros y Evidencias. Organiza actas, responsables y fechas límite en un solo lugar.</p>
                     <div class="mt-9 flex flex-wrap gap-3 text-sm text-slate-300">
                         @foreach (['UCI', 'Hospitalización', 'Urgencias', 'Cirugía'] as $area)
