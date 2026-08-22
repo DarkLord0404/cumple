@@ -33,7 +33,7 @@ class UserManagementController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'area_id' => ['nullable', 'exists:areas,id'],
+            'area_id' => ['nullable', Rule::exists('areas', 'id')->where('organization_id', $request->user()->organization_id)],
             'role' => ['required', Rule::in(['administrator', ...User::COORDINATOR_ROLES, 'quality', 'collaborator'])],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
@@ -61,7 +61,7 @@ class UserManagementController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user)],
-            'area_id' => ['nullable', 'exists:areas,id'],
+            'area_id' => ['nullable', Rule::exists('areas', 'id')->where('organization_id', $request->user()->organization_id)],
             'role' => ['required', Rule::in(['administrator', ...User::COORDINATOR_ROLES, 'quality', 'collaborator'])],
             'is_active' => ['required', 'boolean'],
         ]);

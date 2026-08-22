@@ -50,6 +50,14 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        if (! Auth::user()->is_active || (Auth::user()->organization && ! Auth::user()->organization->is_active)) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'Esta cuenta u organización se encuentra inactiva.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

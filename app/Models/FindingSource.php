@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
 
 class FindingSource extends Model
 {
-    protected $fillable = ['name', 'is_invima', 'is_active'];
+    use BelongsToOrganization;
+
+    protected $fillable = ['organization_id', 'name', 'is_invima', 'is_active'];
 
     protected function casts(): array
     {

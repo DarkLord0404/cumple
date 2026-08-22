@@ -1,52 +1,13 @@
 <x-guest-layout>
-    <form method="POST" action="{{ route('register') }}">
+    <div class="mb-5"><span class="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700">Nueva organización</span><h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-950">Crea tu espacio en CUMPLE</h2><p class="mt-2 text-sm leading-6 text-slate-500">Serás el administrador y después podrás crear áreas, usuarios y responsables.</p></div>
+    <form method="POST" action="{{ route('register') }}" class="space-y-4">
         @csrf
-
-        <!-- Name -->
-        <div>
-            <x-input-label for="name" :value="__('Name')" />
-            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
-            <x-input-error :messages="$errors->get('name')" class="mt-2" />
-        </div>
-
-        <!-- Email Address -->
-        <div class="mt-4">
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
-
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="new-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- Confirm Password -->
-        <div class="mt-4">
-            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-
-            <x-text-input id="password_confirmation" class="block mt-1 w-full"
-                            type="password"
-                            name="password_confirmation" required autocomplete="new-password" />
-
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            <a class="underline text-sm text-slate-600 hover:text-slate-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" href="{{ route('login') }}">
-                {{ __('Already registered?') }}
-            </a>
-
-            <x-primary-button class="ms-4">
-                {{ __('Register') }}
-            </x-primary-button>
-        </div>
+        <div><x-input-label for="organization_name" value="Nombre de la organización"/><x-text-input id="organization_name" class="mt-1 block w-full" name="organization_name" :value="old('organization_name')" required autofocus autocomplete="organization" placeholder="Ejemplo: Koqoi Consultores"/><x-input-error :messages="$errors->get('organization_name')" class="mt-1"/></div>
+        <div><x-input-label for="name" value="Tu nombre completo"/><x-text-input id="name" class="mt-1 block w-full" name="name" :value="old('name')" required autocomplete="name"/><x-input-error :messages="$errors->get('name')" class="mt-1"/></div>
+        <div><x-input-label for="email" value="Correo de administración"/><x-text-input id="email" class="mt-1 block w-full" type="email" name="email" :value="old('email')" required autocomplete="username"/><x-input-error :messages="$errors->get('email')" class="mt-1"/></div>
+        <div class="grid gap-3 sm:grid-cols-2"><div><x-input-label for="password" value="Contraseña"/><x-text-input id="password" class="mt-1 block w-full" type="password" name="password" required autocomplete="new-password"/><x-input-error :messages="$errors->get('password')" class="mt-1"/></div><div><x-input-label for="password_confirmation" value="Confirmar contraseña"/><x-text-input id="password_confirmation" class="mt-1 block w-full" type="password" name="password_confirmation" required autocomplete="new-password"/></div></div>
+        <label class="flex items-start gap-2 text-xs leading-5 text-slate-600"><input type="checkbox" name="terms" value="1" class="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" required><span>Acepto los <a class="font-bold text-emerald-700" href="{{ route('legal.terms') }}" target="_blank">términos</a>, la <a class="font-bold text-emerald-700" href="{{ route('legal.privacy') }}" target="_blank">política de privacidad</a> y el tratamiento de datos.</span></label><x-input-error :messages="$errors->get('terms')"/>
+        <x-primary-button class="w-full py-3">Crear organización</x-primary-button>
+        <p class="text-center text-sm text-slate-500">¿Ya tienes una cuenta? <a href="{{ route('login') }}" class="font-bold text-emerald-700">Ingresar</a></p>
     </form>
 </x-guest-layout>

@@ -33,10 +33,10 @@ class MeetingMinuteController extends Controller
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'], 'held_at' => ['required', 'date'],
-            'area_id' => ['required', 'exists:areas,id'], 'organizer' => ['nullable', 'string', 'max:255'],
+            'area_id' => ['required', Rule::exists('areas', 'id')->where('organization_id', $request->user()->organization_id)], 'organizer' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'], 'objective' => ['nullable', 'string'],
             'agenda' => ['nullable', 'string'], 'development' => ['nullable', 'string'], 'decisions' => ['nullable', 'string'],
-            'attendees' => ['nullable', 'array'], 'attendees.*' => ['exists:users,id'],
+            'attendees' => ['nullable', 'array'], 'attendees.*' => [Rule::exists('users', 'id')->where('organization_id', $request->user()->organization_id)],
             'external_participant_names' => ['nullable', 'string'],
         ]);
         $external = collect(preg_split('/\r\n|\r|\n/', $data['external_participant_names'] ?? ''))->filter()->map(fn ($name) => ['name' => trim($name)])->values()->all();
@@ -58,8 +58,8 @@ class MeetingMinuteController extends Controller
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'], 'assignee_type' => ['required', Rule::in(['internal', 'external'])],
-            'assigned_to' => ['nullable', 'exists:users,id'], 'assignee_ids' => ['nullable', 'array'],
-            'assignee_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where('organization_id', $request->user()->organization_id)], 'assignee_ids' => ['nullable', 'array'],
+            'assignee_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('organization_id', $request->user()->organization_id)],
             'external_assignee_name' => ['nullable', 'required_if:assignee_type,external', 'string', 'max:255'],
             'due_at' => ['required', 'date'], 'expected_result' => ['nullable', 'string'],
         ]);

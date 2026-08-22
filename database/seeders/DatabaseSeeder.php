@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Area;
 use App\Models\FindingSource;
+use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -17,13 +18,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $organization = Organization::firstOrCreate(
+            ['slug' => 'clinica-de-occidente'],
+            ['name' => 'Clínica de Occidente', 'contact_email' => env('ADMIN_EMAIL'), 'is_active' => true],
+        );
+
         collect([
             ['name' => 'UCI', 'slug' => 'uci'],
             ['name' => 'Hospitalización', 'slug' => 'hospitalizacion'],
             ['name' => 'Urgencias', 'slug' => 'urgencias'],
             ['name' => 'Cirugía', 'slug' => 'cirugia'],
             ['name' => 'Dirección Médica', 'slug' => 'direccion-medica'],
-        ])->each(fn (array $area) => Area::query()->updateOrCreate(['slug' => $area['slug']], $area));
+        ])->each(fn (array $area) => Area::withoutGlobalScopes()->updateOrCreate(['organization_id' => $organization->id, 'slug' => $area['slug']], $area));
 
         collect([
             ['Auditoría Instituto Geológico Colombiano', false], ['Auditoría INVIMA BPE', true],
@@ -40,12 +46,13 @@ class DatabaseSeeder extends Seeder
             ['No conforme', false], ['PAMEC', false], ['Resultado de PQR', false],
             ['Revisión interna de procesos', false], ['Rondas de seguridad', false],
             ['Sesiones breves de seguridad del paciente', false],
-        ])->each(fn (array $source) => FindingSource::updateOrCreate(['name' => $source[0]], ['is_invima' => $source[1]]));
+        ])->each(fn (array $source) => FindingSource::withoutGlobalScopes()->updateOrCreate(['organization_id' => $organization->id, 'name' => $source[0]], ['is_invima' => $source[1]]));
 
         if (env('ADMIN_EMAIL') && env('ADMIN_PASSWORD')) {
             User::query()->updateOrCreate(
                 ['email' => env('ADMIN_EMAIL')],
                 [
+                    'organization_id' => $organization->id,
                     'name' => env('ADMIN_NAME', 'Administrador CUMPLE'),
                     'password' => env('ADMIN_PASSWORD'),
                     'role' => 'administrator',

@@ -100,9 +100,9 @@ class ImprovementCaseController extends Controller
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'finding_source_id' => ['required', 'exists:finding_sources,id'],
-            'reporting_area_id' => ['required', 'exists:areas,id'],
-            'reported_area_id' => ['nullable', 'exists:areas,id'],
+            'finding_source_id' => ['required', Rule::exists('finding_sources', 'id')->where('organization_id', $request->user()->organization_id)],
+            'reporting_area_id' => ['required', Rule::exists('areas', 'id')->where('organization_id', $request->user()->organization_id)],
+            'reported_area_id' => ['nullable', Rule::exists('areas', 'id')->where('organization_id', $request->user()->organization_id)],
             'reported_at' => ['required', 'date'],
             'action_type' => ['required', Rule::in(['corrective', 'improvement'])],
             'finding_description' => ['required', 'string'],

@@ -29,12 +29,13 @@ class AdministrationCatalogController extends Controller
     {
         $this->authorizeAdministrator($request);
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:areas,name'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('areas', 'name')->where('organization_id', $request->user()->organization_id)],
             'description' => ['nullable', 'string'],
             'coordinator_id' => [
                 'nullable',
                 Rule::exists('users', 'id')->where(fn ($query) => $query
                     ->where('is_active', true)
+                    ->where('organization_id', $request->user()->organization_id)
                     ->whereIn('role', User::COORDINATOR_ROLES)),
             ],
         ]);
@@ -52,12 +53,13 @@ class AdministrationCatalogController extends Controller
     {
         $this->authorizeAdministrator($request);
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('areas')->ignore($area)],
+            'name' => ['required', 'string', 'max:255', Rule::unique('areas')->where('organization_id', $request->user()->organization_id)->ignore($area)],
             'description' => ['nullable', 'string'],
             'coordinator_id' => [
                 'nullable',
                 Rule::exists('users', 'id')->where(fn ($query) => $query
                     ->where('is_active', true)
+                    ->where('organization_id', $request->user()->organization_id)
                     ->whereIn('role', User::COORDINATOR_ROLES)),
             ],
             'is_active' => ['required', 'boolean'],
@@ -95,7 +97,7 @@ class AdministrationCatalogController extends Controller
     {
         $this->authorizeAdministrator($request);
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:finding_sources,name'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('finding_sources', 'name')->where('organization_id', $request->user()->organization_id)],
             'is_invima' => ['required', 'boolean'],
         ]);
         FindingSource::create($data + ['is_active' => true]);
@@ -107,7 +109,7 @@ class AdministrationCatalogController extends Controller
     {
         $this->authorizeAdministrator($request);
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('finding_sources')->ignore($source)],
+            'name' => ['required', 'string', 'max:255', Rule::unique('finding_sources')->where('organization_id', $request->user()->organization_id)->ignore($source)],
             'is_invima' => ['required', 'boolean'], 'is_active' => ['required', 'boolean'],
         ]);
         $source->update($data);

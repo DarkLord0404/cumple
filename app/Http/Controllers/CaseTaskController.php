@@ -39,9 +39,9 @@ class CaseTaskController extends Controller
             'expected_result' => ['nullable', 'string'],
             'required_resources' => ['nullable', 'string'],
             'assignee_type' => ['required', Rule::in(['internal', 'external'])],
-            'assigned_to' => ['nullable', 'exists:users,id'],
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where('organization_id', $request->user()->organization_id)],
             'assignee_ids' => ['nullable', 'array'],
-            'assignee_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+            'assignee_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('organization_id', $request->user()->organization_id)],
             'external_assignee_name' => ['nullable', 'required_if:assignee_type,external', 'string', 'max:255'],
             'external_assignee_email' => ['nullable', 'email', 'max:255'],
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'critical'])],
@@ -151,7 +151,7 @@ class CaseTaskController extends Controller
         $this->authorizeTaskManagement($request, $task);
         $data = $request->validate([
             'assignee_ids' => ['required', 'array', 'min:1'],
-            'assignee_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('is_active', true)],
+            'assignee_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', true)->where('organization_id', $request->user()->organization_id))],
         ]);
         $previousAssignees = $task->assignees()->pluck('users.id');
         $task->assignees()->sync($data['assignee_ids']);

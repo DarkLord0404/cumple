@@ -20,7 +20,7 @@
                     <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10"><img src="{{ asset('img/cumple-symbol.png') }}" alt="" class="h-8 w-8 object-contain"></div>
                     <div><div class="text-lg font-bold tracking-[.2em]">CUMPLE</div><div class="text-xs font-semibold tracking-wide text-slate-400">POR KOQOI</div></div>
                 </div>
-                <a href="{{ route('login') }}" class="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold transition hover:border-emerald-300 hover:text-emerald-300">Ingresar</a>
+                <div class="flex items-center gap-2"><a href="{{ route('register') }}" class="hidden rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-4 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-300/20 sm:inline-flex">Crear organización</a><a href="{{ route('login') }}" class="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold transition hover:border-emerald-300 hover:text-emerald-300">Ingresar</a></div>
             </header>
             <section class="grid min-h-0 flex-1 items-center gap-5 py-4 sm:gap-7 lg:grid-cols-[1.15fr_.85fr] lg:gap-12 lg:py-6">
                 <div>

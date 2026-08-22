@@ -1,13 +1,13 @@
 <x-guest-layout>
-    <div class="mb-7">
-        <span class="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700">Acceso institucional</span>
-        <h2 class="mt-4 text-3xl font-extrabold tracking-tight text-slate-950">Bienvenido a CUMPLE</h2>
+    <div class="mb-5">
+        <span class="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700">Acceso seguro</span>
+        <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-950">Bienvenido a CUMPLE</h2>
         <p class="mt-2 text-sm leading-6 text-slate-500">Ingresa con tu correo y contraseña para continuar.</p>
     </div>
 
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form method="POST" action="{{ route('login') }}" class="space-y-5">
+    <form method="POST" action="{{ route('login') }}" class="space-y-4">
         @csrf
         <div>
             <x-input-label for="email" :value="__('Email')" />
@@ -30,4 +30,5 @@
         </label>
         <x-primary-button class="w-full py-3">{{ __('Log in') }}</x-primary-button>
     </form>
+    <div class="mt-5 border-t border-slate-100 pt-4 text-center"><p class="text-sm text-slate-500">¿Tu organización aún no usa CUMPLE?</p><a href="{{ route('register') }}" class="mt-2 inline-flex font-bold text-emerald-700 hover:text-emerald-900">Crear una nueva organización →</a></div>
 </x-guest-layout>

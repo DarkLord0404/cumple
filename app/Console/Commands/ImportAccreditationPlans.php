@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Area;
 use App\Models\FindingSource;
 use App\Models\ImprovementCase;
+use App\Models\Organization;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
@@ -17,7 +18,7 @@ use RuntimeException;
 
 class ImportAccreditationPlans extends Command
 {
-    protected $signature = 'cumple:import-accreditation {file} {--dry-run}';
+    protected $signature = 'cumple:import-accreditation {file} {--organization=clinica-de-occidente} {--dry-run}';
 
     protected $description = 'Importa oportunidades y acciones asistenciales desde el extracto auditado de acreditación';
 
@@ -37,15 +38,16 @@ class ImportAccreditationPlans extends Command
             return self::SUCCESS;
         }
 
-        $source = FindingSource::firstOrCreate(
-            ['name' => 'Informe de acreditación – acreditación condicionada'],
+        $organization = Organization::where('slug', $this->option('organization'))->firstOrFail();
+        $source = FindingSource::withoutGlobalScopes()->firstOrCreate(
+            ['organization_id' => $organization->id, 'name' => 'Informe de acreditación – acreditación condicionada'],
             ['is_invima' => false, 'is_active' => true],
         );
-        $area = Area::where('slug', 'direccion-medica')->firstOrFail();
-        $administrator = User::where('role', 'administrator')->orderBy('id')->firstOrFail();
-        $users = User::whereIn('name', $records->pluck('matched_users')->flatten()->unique())->get()->keyBy('name');
+        $area = Area::withoutGlobalScopes()->where('organization_id', $organization->id)->where('slug', 'direccion-medica')->firstOrFail();
+        $administrator = User::withoutGlobalScopes()->where('organization_id', $organization->id)->where('role', 'administrator')->orderBy('id')->firstOrFail();
+        $users = User::withoutGlobalScopes()->where('organization_id', $organization->id)->whereIn('name', $records->pluck('matched_users')->flatten()->unique())->get()->keyBy('name');
 
-        DB::transaction(function () use ($records, $source, $area, $administrator, $users): void {
+        DB::transaction(function () use ($records, $source, $area, $administrator, $users, $organization): void {
             $incomingTaskCodes = collect();
             foreach ($records->groupBy(fn ($row) => $row['source_file'].'|'.$row['opportunity_number']) as $group) {
                 $first = $group->first();
@@ -57,7 +59,7 @@ class ImportAccreditationPlans extends Command
                     ?: ($first['root_cause'] ?? $causalSteps->last());
                 $whys = $causalSteps->reject(fn ($step) => Str::contains(Str::upper(Str::ascii($step)), 'CAUSA RAIZ'))
                     ->take(5)->values()->all();
-                $case = ImprovementCase::updateOrCreate(['code' => $caseCode], [
+                $case = ImprovementCase::withoutGlobalScopes()->updateOrCreate(['organization_id' => $organization->id, 'code' => $caseCode], [
                     'title' => Str::limit($first['standard'] ?: $first['opportunity'], 250, ''),
                     'finding_source_id' => $source->id,
                     'reporting_area_id' => $area->id,
@@ -76,6 +78,7 @@ class ImportAccreditationPlans extends Command
                         'source_file' => $first['source_file'], 'sheet' => $first['sheet'],
                     ],
                 ]);
+                $case->forceFill(['organization_id' => $organization->id])->save();
 
                 foreach ($group as $record) {
                     $dueAt = $this->parseDate($record['due_date']);
@@ -85,8 +88,9 @@ class ImportAccreditationPlans extends Command
                     $incomingTaskCodes->push($taskCode);
                     $assignees = collect($record['matched_users'])->map(fn ($name) => $users->get($name)?->id)->filter()->unique()->values();
                     throw_if($assignees->isEmpty(), RuntimeException::class, "Sin usuario válido para {$taskCode}");
-                    $existingTask = Task::where('code', $taskCode)->first();
+                    $existingTask = Task::withoutGlobalScopes()->where('organization_id', $organization->id)->where('code', $taskCode)->first();
                     $taskValues = [
+                        'organization_id' => $organization->id,
                         'title' => Str::limit(Str::squish($record['action']), 250, ''),
                         'description' => $record['action']."\n\nResponsables en la matriz: ".$record['responsible_text']."\nOrigen: {$record['macroarea']}, fila {$record['row']}.",
                         'expected_result' => $record['deliverables'] ?: null,
@@ -103,19 +107,20 @@ class ImportAccreditationPlans extends Command
                     if (! $existingTask) {
                         $taskValues += ['assigned_to' => $assignees->first(), 'assignee_type' => 'internal'];
                     }
-                    $task = Task::updateOrCreate(['code' => $taskCode], $taskValues);
+                    $task = Task::withoutGlobalScopes()->updateOrCreate(['organization_id' => $organization->id, 'code' => $taskCode], $taskValues);
+                    $task->forceFill(['organization_id' => $organization->id])->save();
                     if (! $existingTask || ! $task->assignees()->exists()) {
                         $task->assignees()->sync($assignees);
                     }
                     if (! $existingTask) {
-                        Notification::send(User::whereIn('id', $assignees)->get(), new TaskAssignedNotification($task, $administrator));
+                        Notification::send(User::withoutGlobalScopes()->where('organization_id', $organization->id)->whereIn('id', $assignees)->get(), new TaskAssignedNotification($task, $administrator));
                     }
                 }
             }
 
-            Task::withTrashed()->where('code', 'like', 'ACR-%')->whereNotIn('code', $incomingTaskCodes)
+            Task::withoutGlobalScopes()->withTrashed()->where('organization_id', $organization->id)->where('code', 'like', 'ACR-%')->whereNotIn('code', $incomingTaskCodes)
                 ->get()->each->forceDelete();
-            ImprovementCase::withTrashed()->where('code', 'like', 'ACR-%')->whereDoesntHave('tasks')
+            ImprovementCase::withoutGlobalScopes()->withTrashed()->where('organization_id', $organization->id)->where('code', 'like', 'ACR-%')->whereDoesntHave('tasks')
                 ->get()->each->forceDelete();
         });
 

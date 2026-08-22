@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Task extends Model
 {
-    use SoftDeletes;
+    use BelongsToOrganization, SoftDeletes;
 
     protected $fillable = ['code', 'title', 'description', 'expected_result', 'required_resources', 'area_id', 'meeting_minute_id', 'improvement_case_id', 'created_by', 'assigned_to', 'assignee_type', 'external_assignee_name', 'external_assignee_email', 'priority', 'status', 'progress', 'due_at', 'started_at', 'submitted_at', 'completed_at', 'reviewed_by', 'review_notes', 'quality_approved_by', 'quality_approved_at', 'medical_approved_by', 'medical_approved_at'];
 

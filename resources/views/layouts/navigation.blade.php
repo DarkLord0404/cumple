@@ -37,7 +37,7 @@
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center rounded-xl border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-slate-600 transition duration-150 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
-                            <div>{{ Auth::user()->name }}</div>
+                            <div class="text-left"><span class="block">{{ Auth::user()->name }}</span><span class="block max-w-40 truncate text-[10px] font-semibold text-slate-400">{{ Auth::user()->organization?->name }}</span></div>
 
                             <div class="ms-1">
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -98,6 +98,7 @@
             <div class="px-4">
                 <div class="font-medium text-base text-slate-800">{{ Auth::user()->name }}</div>
                 <div class="font-medium text-sm text-slate-500">{{ Auth::user()->email }}</div>
+                <div class="mt-1 text-xs font-semibold text-emerald-700">{{ Auth::user()->organization?->name }}</div>
             </div>
 
             <div class="mt-3 space-y-1">

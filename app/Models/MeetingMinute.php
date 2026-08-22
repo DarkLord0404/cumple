@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,7 +13,7 @@ class MeetingMinute extends Model
 {
     protected $fillable = ['number', 'title', 'meeting_type', 'organizer', 'area_id', 'created_by', 'held_at', 'location', 'external_participants', 'objective', 'agenda', 'development', 'decisions', 'status', 'approved_at', 'source_system', 'external_reference', 'source_document_path', 'generated_document_path'];
 
-    use SoftDeletes;
+    use BelongsToOrganization, SoftDeletes;
 
     protected function casts(): array
     {
