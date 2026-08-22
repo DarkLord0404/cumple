@@ -83,23 +83,28 @@ class ImportAccreditationPlans extends Command
                     $incomingTaskCodes->push($taskCode);
                     $assignees = collect($record['matched_users'])->map(fn ($name) => $users->get($name)?->id)->filter()->unique()->values();
                     throw_if($assignees->isEmpty(), RuntimeException::class, "Sin usuario válido para {$taskCode}");
-                    $task = Task::updateOrCreate(['code' => $taskCode], [
+                    $existingTask = Task::where('code', $taskCode)->first();
+                    $taskValues = [
                         'title' => Str::limit(Str::squish($record['action']), 250, ''),
                         'description' => $record['action']."\n\nResponsables en la matriz: ".$record['responsible_text']."\nOrigen: {$record['macroarea']}, fila {$record['row']}.",
                         'expected_result' => $record['deliverables'] ?: null,
                         'area_id' => $area->id,
                         'improvement_case_id' => $case->id,
                         'created_by' => $administrator->id,
-                        'assigned_to' => $assignees->first(),
-                        'assignee_type' => 'internal',
                         'priority' => 'high',
                         'status' => $closed ? 'completed' : ($inProgress ? 'in_progress' : 'pending'),
                         'progress' => $closed ? 100 : ($inProgress ? 50 : 0),
                         'due_at' => $dueAt,
                         'started_at' => $inProgress ? now() : null,
                         'completed_at' => $closed ? ($dueAt ?? now()) : null,
-                    ]);
-                    $task->assignees()->sync($assignees);
+                    ];
+                    if (! $existingTask) {
+                        $taskValues += ['assigned_to' => $assignees->first(), 'assignee_type' => 'internal'];
+                    }
+                    $task = Task::updateOrCreate(['code' => $taskCode], $taskValues);
+                    if (! $existingTask || ! $task->assignees()->exists()) {
+                        $task->assignees()->sync($assignees);
+                    }
                 }
             }
 
