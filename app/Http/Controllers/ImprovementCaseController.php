@@ -17,9 +17,33 @@ use Illuminate\View\View;
 
 class ImprovementCaseController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('cases.index', ['cases' => ImprovementCase::with(['source', 'reportingArea', 'tasks'])->latest('reported_at')->paginate(20)]);
+        $query = ImprovementCase::query()->with(['source', 'reportingArea'])->withCount('tasks');
+        $user = $request->user();
+        if (! in_array($user->role, ['administrator', 'quality'])) {
+            $query->whereHas('tasks', fn ($tasks) => $tasks->where('assigned_to', $user->id)
+                ->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->id)));
+        }
+        $query->when($request->filled('q'), function ($query) use ($request): void {
+            $search = '%'.$request->string('q')->trim().'%';
+            $query->where(fn ($query) => $query->where('code', 'ilike', $search)
+                ->orWhere('title', 'ilike', $search)->orWhere('finding_description', 'ilike', $search));
+        });
+        $query->when($request->filled('source_id'), fn ($query) => $query->where('finding_source_id', $request->integer('source_id')));
+        $query->when($request->filled('action_type'), fn ($query) => $query->where('action_type', $request->string('action_type')));
+        $query->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')));
+        $query->when($request->filled('area_id'), fn ($query) => $query->where('reporting_area_id', $request->integer('area_id')));
+        $query->when($request->filled('assignee_id'), fn ($query) => $query->whereHas('tasks', fn ($tasks) => $tasks
+            ->where('assigned_to', $request->integer('assignee_id'))
+            ->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($request->integer('assignee_id')))));
+
+        return view('cases.index', [
+            'cases' => $query->latest('reported_at')->paginate(20)->withQueryString(),
+            'sources' => FindingSource::where('is_active', true)->orderBy('name')->get(),
+            'areas' => Area::where('is_active', true)->orderBy('name')->get(),
+            'users' => User::where('is_active', true)->orderBy('name')->get(),
+        ]);
     }
 
     public function create(): View

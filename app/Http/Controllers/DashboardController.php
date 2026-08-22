@@ -42,12 +42,8 @@ class DashboardController extends Controller
             return;
         }
         $query->where(function (Builder $query) use ($user) {
-            $query->where(function ($tasks) use ($user): void {
-                $tasks->where('assigned_to', $user->id)->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->id));
-            });
-            if ($user->role === 'coordinator' && $user->area_id) {
-                $query->orWhere('area_id', $user->area_id);
-            }
+            $query->where('assigned_to', $user->id)
+                ->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->id));
         });
     }
 

@@ -219,6 +219,35 @@ class ImprovementManagementTest extends TestCase
             ->assertDontSee('Actualizar guía quirúrgica');
     }
 
+    public function test_dashboard_only_shows_tasks_explicitly_assigned_to_the_user(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $coordinator = User::factory()->create([
+            'role' => 'coordinator',
+            'area_id' => $case->reporting_area_id,
+        ]);
+        $this->createTask($creator, $responsible, $case, 'Tarea privada de otro responsable');
+
+        $this->actingAs($coordinator)->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('Tarea privada de otro responsable');
+    }
+
+    public function test_opportunity_portfolio_can_filter_by_type(): void
+    {
+        [$creator, $responsible, $correctiveCase] = $this->caseFixture();
+        $correctiveCase->update(['title' => 'Hallazgo correctivo oculto']);
+        $this->createTask($creator, $responsible, $correctiveCase);
+        $improvementCase = $correctiveCase->replicate()->fill([
+            'code' => 'H-MEJORA', 'title' => 'Oportunidad visible', 'action_type' => 'improvement',
+        ]);
+        $improvementCase->save();
+        $this->createTask($creator, $responsible, $improvementCase);
+
+        $this->actingAs($responsible)->get(route('cases.index', ['action_type' => 'improvement']))
+            ->assertOk()->assertSee('Oportunidad visible')->assertDontSee('Hallazgo correctivo oculto');
+    }
+
     private function caseFixture(bool $invima = false): array
     {
         $creator = User::factory()->create();
