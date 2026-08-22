@@ -87,6 +87,46 @@ class ImprovementManagementTest extends TestCase
         Storage::disk('local')->assertExists($document->path);
     }
 
+    public function test_effective_plan_can_only_close_when_all_actions_are_completed(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $creator->update(['role' => 'coordinator']);
+        $task = $this->createTask($creator, $responsible, $case);
+        $payload = ['impact_before' => 'Incumplimiento', 'impact_after' => 'Cumplimiento sostenido', 'effectiveness_result' => 'Se alcanzó la meta', 'is_effective' => 1];
+
+        $this->actingAs($creator)->patch(route('cases.effectiveness.update', $case), $payload)->assertStatus(422);
+        $task->update(['status' => 'completed', 'progress' => 100]);
+        $this->actingAs($creator)->patch(route('cases.effectiveness.update', $case), $payload)->assertSessionHasNoErrors();
+
+        $this->assertSame('closed', $case->fresh()->status);
+        $this->assertNotNull($case->fresh()->closed_at);
+    }
+
+    public function test_ineffective_plan_is_reopened(): void
+    {
+        [$creator, , $case] = $this->caseFixture();
+        $creator->update(['role' => 'quality']);
+        $case->update(['status' => 'closed', 'closed_at' => now()]);
+        $this->actingAs($creator)->patch(route('cases.effectiveness.update', $case), [
+            'impact_before' => 'Resultado inicial', 'impact_after' => 'Sin cambio',
+            'effectiveness_result' => 'No se alcanzó la meta', 'is_effective' => 0,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('action_plan', $case->fresh()->status);
+        $this->assertNull($case->fresh()->closed_at);
+    }
+
+    public function test_collaborator_dashboard_only_shows_assigned_actions(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $assigned = $this->createTask($creator, $responsible, $case, 'Mi acción');
+        $other = User::factory()->create();
+        $this->createTask($creator, $other, $case, 'Acción ajena');
+
+        $this->actingAs($responsible)->get(route('dashboard'))
+            ->assertOk()->assertSee($assigned->title)->assertDontSee('Acción ajena');
+    }
+
     private function caseFixture(bool $invima = false): array
     {
         $creator = User::factory()->create();
@@ -101,5 +141,16 @@ class ImprovementManagementTest extends TestCase
         ]);
 
         return [$creator, $responsible, $case];
+    }
+
+    private function createTask(User $creator, User $responsible, ImprovementCase $case, string $title = 'Acción de prueba'): Task
+    {
+        return Task::create([
+            'code' => 'AC-'.fake()->unique()->numerify('#####'), 'title' => $title,
+            'area_id' => $case->reporting_area_id, 'improvement_case_id' => $case->id,
+            'created_by' => $creator->id, 'assigned_to' => $responsible->id,
+            'assignee_type' => 'internal', 'priority' => 'medium', 'status' => 'pending',
+            'due_at' => now()->addWeek(),
+        ]);
     }
 }

@@ -11,11 +11,11 @@ class ImprovementCase extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['code', 'title', 'finding_source_id', 'reporting_area_id', 'reported_area_id', 'reported_by', 'reported_at', 'action_type', 'finding_description', 'status', 'urgency_score', 'scope_score', 'evolution_score', 'priority_score', 'analysis_method', 'analysis_data', 'immediate_correction', 'root_cause', 'validated_by', 'validated_at', 'validation_notes'];
+    protected $fillable = ['code', 'title', 'finding_source_id', 'reporting_area_id', 'reported_area_id', 'reported_by', 'reported_at', 'action_type', 'finding_description', 'status', 'urgency_score', 'scope_score', 'evolution_score', 'priority_score', 'analysis_method', 'analysis_data', 'immediate_correction', 'root_cause', 'validated_by', 'validated_at', 'validation_notes', 'impact_before', 'impact_after', 'effectiveness_result', 'is_effective', 'effectiveness_evaluated_by', 'effectiveness_evaluated_at', 'closure_notes', 'closed_at'];
 
     protected function casts(): array
     {
-        return ['reported_at' => 'date', 'validated_at' => 'datetime', 'analysis_data' => 'array'];
+        return ['reported_at' => 'date', 'validated_at' => 'datetime', 'analysis_data' => 'array', 'is_effective' => 'boolean', 'effectiveness_evaluated_at' => 'datetime', 'closed_at' => 'datetime'];
     }
 
     public function source(): BelongsTo
@@ -46,5 +46,10 @@ class ImprovementCase extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(OfficialDocument::class);
+    }
+
+    public function effectivenessEvaluator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'effectiveness_evaluated_by');
     }
 }

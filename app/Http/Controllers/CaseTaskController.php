@@ -13,6 +13,7 @@ class CaseTaskController extends Controller
 {
     public function store(Request $request, ImprovementCase $case): RedirectResponse
     {
+        abort_if($case->status === 'closed', 422, 'Un plan cerrado no admite nuevas acciones. Debe marcarse como no eficaz para reabrirlo.');
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -45,6 +46,7 @@ class CaseTaskController extends Controller
 
     public function update(Request $request, Task $task): RedirectResponse
     {
+        $this->authorizeTaskManagement($request, $task);
         $data = $request->validate([
             'status' => ['required', Rule::in(['pending', 'in_progress', 'in_review', 'completed', 'cancelled'])],
             'progress' => ['required', 'integer', 'min:0', 'max:100'],
@@ -61,6 +63,7 @@ class CaseTaskController extends Controller
 
     public function storeEvidence(Request $request, Task $task): RedirectResponse
     {
+        $this->authorizeTaskManagement($request, $task);
         $data = $request->validate(['evidence' => ['required', 'file', 'max:25600'], 'description' => ['nullable', 'string', 'max:1000']]);
         $file = $request->file('evidence');
         $path = $file->store("evidence/{$task->id}");
@@ -71,5 +74,15 @@ class CaseTaskController extends Controller
         ]);
 
         return back()->with('status', 'Evidencia adjuntada a la acción.');
+    }
+
+    private function authorizeTaskManagement(Request $request, Task $task): void
+    {
+        $user = $request->user();
+        $allowed = in_array($user->role, ['administrator', 'quality'])
+            || $task->assigned_to === $user->id
+            || $task->created_by === $user->id
+            || ($user->role === 'coordinator' && $user->area_id === $task->area_id);
+        abort_unless($allowed, 403);
     }
 }
