@@ -6,9 +6,11 @@ use App\Models\Area;
 use App\Models\MeetingMinute;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskAssignedNotification;
 use App\Services\InstitutionalMinuteDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -71,6 +73,9 @@ class MeetingMinuteController extends Controller
         unset($data['assignee_ids']);
         $task = Task::create($data + ['code' => 'AC-'.now()->format('Y').'-'.Str::upper(Str::random(6)), 'area_id' => $minute->area_id, 'meeting_minute_id' => $minute->id, 'created_by' => $request->user()->id, 'priority' => 'medium', 'status' => 'pending']);
         $task->assignees()->sync($assigneeIds);
+        if ($assigneeIds->isNotEmpty()) {
+            Notification::send(User::whereIn('id', $assigneeIds)->get(), new TaskAssignedNotification($task, $request->user()));
+        }
 
         return back()->with('status', 'Compromiso agregado y asignado como acción.');
     }

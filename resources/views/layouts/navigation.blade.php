@@ -30,6 +30,10 @@
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
+                <a href="{{ route('notifications.index') }}" class="relative mr-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-800" aria-label="Notificaciones">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0a3 3 0 01-6 0h6z"/></svg>
+                    @if(Auth::user()->unreadNotifications()->count())<span class="absolute -right-1 -top-1 min-w-5 rounded-full bg-rose-600 px-1.5 py-0.5 text-center text-[10px] font-bold text-white">{{ Auth::user()->unreadNotifications()->count() }}</span>@endif
+                </a>
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center rounded-xl border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-slate-600 transition duration-150 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
@@ -82,6 +86,7 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('cases.index')" :active="request()->routeIs('cases.*')">Hallazgos y planes</x-responsive-nav-link>
             <x-responsive-nav-link :href="route('minutes.index')" :active="request()->routeIs('minutes.*')">Actas</x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.*')">Notificaciones @if(Auth::user()->unreadNotifications()->count())<span class="ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-xs font-bold text-white">{{ Auth::user()->unreadNotifications()->count() }}</span>@endif</x-responsive-nav-link>
             @if(Auth::user()->role === 'administrator')
                 <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">Usuarios</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('administration.catalogs')" :active="request()->routeIs('administration.*')">Configuración</x-responsive-nav-link>

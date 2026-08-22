@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -20,6 +21,10 @@ class DashboardController extends Controller
         ));
         $tasks = Task::query()->with(['improvementCase', 'area', 'assignee', 'assignees']);
         $this->applyVisibility($tasks, $request);
+        $availableTasks = clone $tasks;
+        $availableTaskIds = (clone $availableTasks)->pluck('tasks.id');
+        $assigneeIds = (clone $availableTasks)->whereNotNull('assigned_to')->pluck('assigned_to')
+            ->merge(DB::table('task_user')->whereIn('task_id', $availableTaskIds)->pluck('user_id'))->unique();
         $open = (clone $tasks)->whereNotIn('status', ['completed', 'cancelled']);
         $filtered = clone $tasks;
         $this->applyFilters($filtered, $request);
@@ -34,8 +39,14 @@ class DashboardController extends Controller
             'taskResults' => $filtered->orderByRaw("case when status = 'completed' then 1 else 0 end")
                 ->orderByRaw('case when due_at is null then 1 else 0 end')->orderBy('due_at')->paginate(20)->withQueryString(),
             'openCases' => ImprovementCase::whereNotIn('status', ['closed', 'cancelled'])->count(),
-            'areas' => Area::where('is_active', true)->orderBy('name')->get(),
-            'users' => User::where('is_active', true)->orderBy('name')->get(),
+            'areas' => Area::whereIn('id', (clone $availableTasks)->whereNotNull('area_id')->distinct()->pluck('area_id'))->orderBy('name')->get(),
+            'users' => User::whereIn('id', $assigneeIds)->orderBy('name')->get(),
+            'taskStatuses' => (clone $availableTasks)->distinct()->pluck('status')->filter()->values(),
+            'dueOptions' => collect([
+                'overdue' => (clone $availableTasks)->whereNotIn('status', ['completed', 'cancelled'])->where('due_at', '<', now())->exists(),
+                'next_7_days' => (clone $availableTasks)->whereNotIn('status', ['completed', 'cancelled'])->whereBetween('due_at', [now(), now()->addDays(7)])->exists(),
+                'no_date' => (clone $availableTasks)->whereNull('due_at')->exists(),
+            ])->filter()->keys(),
             'reviewTasks' => $canApprove
                 ? Task::with(['improvementCase', 'assignees'])->where('status', 'in_review')->oldest('submitted_at')->get()
                 : collect(),

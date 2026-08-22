@@ -44,6 +44,7 @@ class ImprovementManagementTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $this->assertSame($responsible->id, Task::first()->assigned_to);
+        $this->assertSame('Nueva tarea asignada', $responsible->fresh()->unreadNotifications->first()?->data['title']);
     }
 
     public function test_action_can_have_multiple_internal_assignees(): void
@@ -109,6 +110,25 @@ class ImprovementManagementTest extends TestCase
         $this->assertSame('completed', $task->status);
         $this->assertSame(100, $task->progress);
         $this->assertNotNull($task->medical_approved_at);
+        $this->assertSame('Acción cerrada', $quality->fresh()->unreadNotifications->first()?->data['title']);
+    }
+
+    public function test_user_can_open_and_mark_their_notification_as_read(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $this->actingAs($creator)->post(route('cases.tasks.store', $case), [
+            'title' => 'Revisar protocolo', 'assignee_type' => 'internal',
+            'assignee_ids' => [$responsible->id], 'priority' => 'medium',
+            'due_at' => now()->addWeek()->toDateString(),
+        ])->assertSessionHasNoErrors();
+        $notification = $responsible->fresh()->unreadNotifications->firstOrFail();
+
+        $this->actingAs($responsible)->get(route('notifications.index'))
+            ->assertOk()->assertSee('Nueva tarea asignada');
+        $this->actingAs($responsible)->patch(route('notifications.read', $notification))
+            ->assertRedirect(route('tasks.show', Task::firstOrFail()));
+
+        $this->assertNotNull($notification->fresh()->read_at);
     }
 
     public function test_action_cannot_be_submitted_for_review_without_evidence(): void
@@ -291,6 +311,23 @@ class ImprovementManagementTest extends TestCase
         $this->actingAs($coordinator)->get(route('dashboard'))
             ->assertOk()
             ->assertDontSee('Tarea privada de otro responsable');
+    }
+
+    public function test_dashboard_filters_only_offer_values_from_the_users_tasks(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $this->createTask($creator, $responsible, $case);
+        Area::create(['name' => 'Área no utilizada', 'slug' => 'area-no-utilizada']);
+        User::factory()->create(['name' => 'Responsable sin tareas']);
+
+        $this->actingAs($responsible)->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('Área no utilizada')
+            ->assertDontSee('Responsable sin tareas')
+            ->assertDontSee('Todos los estados')
+            ->assertDontSee('Todos los responsables')
+            ->assertDontSee('Todas las áreas')
+            ->assertDontSee('Vencidas');
     }
 
     public function test_user_can_open_an_opportunity_with_tasks_and_evidence_relation(): void

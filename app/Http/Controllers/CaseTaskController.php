@@ -6,8 +6,11 @@ use App\Models\Area;
 use App\Models\ImprovementCase;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskAssignedNotification;
+use App\Notifications\TaskCompletedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -63,6 +66,9 @@ class CaseTaskController extends Controller
             'status' => 'pending',
         ]);
         $task->assignees()->sync($assigneeIds);
+        if ($assigneeIds->isNotEmpty()) {
+            Notification::send(User::whereIn('id', $assigneeIds)->get(), new TaskAssignedNotification($task, $request->user()));
+        }
 
         return back()->with('status', 'Acción asignada correctamente.');
     }
@@ -129,6 +135,10 @@ class CaseTaskController extends Controller
         $task->refresh();
         if ($task->quality_approved_at && $task->medical_approved_at) {
             $task->update(['status' => 'completed', 'progress' => 100, 'completed_at' => now()]);
+            Notification::send(
+                User::where('role', 'quality')->where('is_active', true)->get(),
+                new TaskCompletedNotification($task, $user),
+            );
 
             return back()->with('status', 'Acción cerrada con aprobación de Calidad y Dirección Médica.');
         }
@@ -143,8 +153,13 @@ class CaseTaskController extends Controller
             'assignee_ids' => ['required', 'array', 'min:1'],
             'assignee_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('is_active', true)],
         ]);
+        $previousAssignees = $task->assignees()->pluck('users.id');
         $task->assignees()->sync($data['assignee_ids']);
         $task->update(['assigned_to' => $data['assignee_ids'][0], 'assignee_type' => 'internal']);
+        $newAssignees = collect($data['assignee_ids'])->diff($previousAssignees);
+        if ($newAssignees->isNotEmpty()) {
+            Notification::send(User::whereIn('id', $newAssignees)->get(), new TaskAssignedNotification($task, $request->user()));
+        }
 
         return back()->with('status', 'Responsables actualizados.');
     }

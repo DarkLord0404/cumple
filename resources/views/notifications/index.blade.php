@@ -1,0 +1,10 @@
+<x-app-layout>
+    <x-slot name="header"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-semibold text-emerald-700">Bandeja personal</p><h2 class="mt-1 text-2xl font-bold">Notificaciones</h2></div>@if(auth()->user()->unreadNotifications()->exists())<form method="POST" action="{{ route('notifications.read-all') }}">@csrf @method('PATCH')<x-secondary-button type="submit">Marcar todas como leídas</x-secondary-button></form>@endif</div></x-slot>
+    <div class="py-8"><div class="mx-auto max-w-4xl space-y-4 px-4 sm:px-6 lg:px-8">
+        @if(session('status'))<div class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">{{ session('status') }}</div>@endif
+        @forelse($notifications as $notification)
+            <article class="rounded-2xl bg-white p-4 shadow-sm ring-1 {{ $notification->read_at ? 'ring-slate-200' : 'ring-emerald-300' }} sm:p-5"><div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><h3 class="font-bold text-slate-900">{{ data_get($notification->data,'title','Notificación') }}</h3>@unless($notification->read_at)<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">Nueva</span>@endunless</div><p class="mt-2 break-words text-sm leading-6 text-slate-600">{{ data_get($notification->data,'message') }}</p><p class="mt-2 text-xs text-slate-400">{{ $notification->created_at->format('d/m/Y H:i') }}</p></div><form method="POST" action="{{ route('notifications.read',$notification) }}" class="shrink-0">@csrf @method('PATCH')<button class="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white sm:w-auto">{{ $notification->read_at ? 'Abrir' : 'Leer y abrir' }}</button></form></div></article>
+        @empty<div class="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">No tienes notificaciones todavía.</div>@endforelse
+        <div>{{ $notifications->links() }}</div>
+    </div></div>
+</x-app-layout>

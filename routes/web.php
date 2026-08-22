@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EvidenceController;
 use App\Http\Controllers\ImprovementCaseController;
 use App\Http\Controllers\MeetingMinuteController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfficialDocumentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserManagementController;
@@ -38,6 +39,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('acciones/{task}/revision', [CaseTaskController::class, 'review'])->name('tasks.review');
     Route::post('acciones/{task}/evidencias', [CaseTaskController::class, 'storeEvidence'])->name('tasks.evidence.store');
     Route::get('evidencias/{evidence}/descargar', [EvidenceController::class, 'download'])->name('evidence.download');
+    Route::get('notificaciones', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('notificaciones/leer-todas', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::patch('notificaciones/{notification}/leer', [NotificationController::class, 'read'])->name('notifications.read');
     Route::get('usuarios', [UserManagementController::class, 'index'])->name('users.index');
     Route::post('usuarios', [UserManagementController::class, 'store'])->name('users.store');
     Route::patch('usuarios/{user}', [UserManagementController::class, 'update'])->name('users.update');

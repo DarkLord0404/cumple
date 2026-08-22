@@ -7,9 +7,11 @@ use App\Models\FindingSource;
 use App\Models\ImprovementCase;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskAssignedNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -104,6 +106,9 @@ class ImportAccreditationPlans extends Command
                     $task = Task::updateOrCreate(['code' => $taskCode], $taskValues);
                     if (! $existingTask || ! $task->assignees()->exists()) {
                         $task->assignees()->sync($assignees);
+                    }
+                    if (! $existingTask) {
+                        Notification::send(User::whereIn('id', $assignees)->get(), new TaskAssignedNotification($task, $administrator));
                     }
                 }
             }
