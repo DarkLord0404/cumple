@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['number', 'title', 'meeting_type', 'area_id', 'created_by', 'held_at', 'location', 'objective', 'agenda', 'development', 'decisions', 'status', 'approved_at', 'source_document_path', 'generated_document_path'])]
 class MeetingMinute extends Model
 {
+    protected $fillable = ['number', 'title', 'meeting_type', 'area_id', 'created_by', 'held_at', 'location', 'objective', 'agenda', 'development', 'decisions', 'status', 'approved_at', 'source_document_path', 'generated_document_path'];
+
     use SoftDeletes;
 
     protected function casts(): array

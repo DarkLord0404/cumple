@@ -15,6 +15,14 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Inicio') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('cases.index')" :active="request()->routeIs('cases.*')">
+                        {{ __('Hallazgos y planes') }}
+                    </x-nav-link>
+                    @if(Auth::user()->role === 'administrator')
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                            {{ __('Usuarios') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -70,6 +78,10 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Inicio') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('cases.index')" :active="request()->routeIs('cases.*')">Hallazgos y planes</x-responsive-nav-link>
+            @if(Auth::user()->role === 'administrator')
+                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">Usuarios</x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

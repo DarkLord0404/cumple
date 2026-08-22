@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['code', 'title', 'description', 'expected_result', 'area_id', 'meeting_minute_id', 'created_by', 'assigned_to', 'priority', 'status', 'due_at', 'started_at', 'submitted_at', 'completed_at', 'reviewed_by', 'review_notes'])]
 class Task extends Model
 {
     use SoftDeletes;
+
+    protected $fillable = ['code', 'title', 'description', 'expected_result', 'required_resources', 'area_id', 'meeting_minute_id', 'improvement_case_id', 'created_by', 'assigned_to', 'assignee_type', 'external_assignee_name', 'external_assignee_email', 'priority', 'status', 'progress', 'due_at', 'started_at', 'submitted_at', 'completed_at', 'reviewed_by', 'review_notes'];
 
     protected function casts(): array
     {
@@ -41,6 +41,18 @@ class Task extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function improvementCase(): BelongsTo
+    {
+        return $this->belongsTo(ImprovementCase::class);
+    }
+
+    public function getResponsibleNameAttribute(): string
+    {
+        return $this->assignee_type === 'external'
+            ? ($this->external_assignee_name ?: 'Responsable externo')
+            : ($this->assignee?->name ?: 'Sin asignar');
     }
 
     public function reviewer(): BelongsTo

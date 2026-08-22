@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ImprovementCase;
+use App\Models\Task;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+
+class CaseTaskController extends Controller
+{
+    public function store(Request $request, ImprovementCase $case): RedirectResponse
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'expected_result' => ['nullable', 'string'],
+            'required_resources' => ['nullable', 'string'],
+            'assignee_type' => ['required', Rule::in(['internal', 'external'])],
+            'assigned_to' => ['nullable', 'required_if:assignee_type,internal', 'exists:users,id'],
+            'external_assignee_name' => ['nullable', 'required_if:assignee_type,external', 'string', 'max:255'],
+            'external_assignee_email' => ['nullable', 'email', 'max:255'],
+            'priority' => ['required', Rule::in(['low', 'medium', 'high', 'critical'])],
+            'due_at' => ['required', 'date'],
+        ]);
+
+        if ($data['assignee_type'] === 'internal') {
+            $data['external_assignee_name'] = $data['external_assignee_email'] = null;
+        } else {
+            $data['assigned_to'] = null;
+        }
+
+        Task::create($data + [
+            'code' => 'AC-'.now()->format('Y').'-'.Str::upper(Str::random(6)),
+            'improvement_case_id' => $case->id,
+            'area_id' => $case->reporting_area_id,
+            'created_by' => $request->user()->id,
+            'status' => 'pending',
+        ]);
+
+        return back()->with('status', 'Acción asignada correctamente.');
+    }
+}
