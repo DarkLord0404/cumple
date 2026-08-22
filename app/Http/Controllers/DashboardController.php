@@ -38,9 +38,6 @@ class DashboardController extends Controller
     private function applyVisibility(Builder $query, Request $request): void
     {
         $user = $request->user();
-        if (in_array($user->role, ['administrator', 'quality'])) {
-            return;
-        }
         $query->where(function (Builder $query) use ($user) {
             $query->where('assigned_to', $user->id)
                 ->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->id));
