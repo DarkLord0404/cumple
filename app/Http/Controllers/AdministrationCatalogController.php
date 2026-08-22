@@ -21,7 +21,7 @@ class AdministrationCatalogController extends Controller
         return view('administration.catalogs', [
             'areas' => Area::with(['coordinator'])->orderBy('name')->get(),
             'sources' => FindingSource::orderBy('name')->get(),
-            'coordinators' => User::with('area')->where('is_active', true)->where('role', 'coordinator')->orderBy('name')->get(),
+            'coordinators' => User::with('area')->where('is_active', true)->whereIn('role', User::COORDINATOR_ROLES)->orderBy('name')->get(),
         ]);
     }
 
@@ -35,7 +35,7 @@ class AdministrationCatalogController extends Controller
                 'nullable',
                 Rule::exists('users', 'id')->where(fn ($query) => $query
                     ->where('is_active', true)
-                    ->where('role', 'coordinator')),
+                    ->whereIn('role', User::COORDINATOR_ROLES)),
             ],
         ]);
         $slug = Str::slug($data['name']);
@@ -58,7 +58,7 @@ class AdministrationCatalogController extends Controller
                 'nullable',
                 Rule::exists('users', 'id')->where(fn ($query) => $query
                     ->where('is_active', true)
-                    ->where('role', 'coordinator')),
+                    ->whereIn('role', User::COORDINATOR_ROLES)),
             ],
             'is_active' => ['required', 'boolean'],
         ]);
@@ -128,7 +128,7 @@ class AdministrationCatalogController extends Controller
 
         if ($coordinatorId) {
             Area::where('coordinator_id', $coordinatorId)->whereKeyNot($area->id)->update(['coordinator_id' => null]);
-            User::whereKey($coordinatorId)->update(['area_id' => $area->id, 'role' => 'coordinator']);
+            User::whereKey($coordinatorId)->update(['area_id' => $area->id]);
         }
     }
 }

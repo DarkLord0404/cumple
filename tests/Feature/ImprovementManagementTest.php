@@ -83,7 +83,7 @@ class ImprovementManagementTest extends TestCase
         Storage::fake('local');
         [$creator, $responsible, $case] = $this->caseFixture();
         $quality = User::factory()->create(['role' => 'quality']);
-        $medicalDirector = User::factory()->create(['role' => 'coordinator']);
+        $medicalDirector = User::factory()->create(['role' => 'coordinator_medical']);
         Area::create([
             'name' => 'Dirección Médica',
             'slug' => 'direccion-medica',
@@ -168,7 +168,7 @@ class ImprovementManagementTest extends TestCase
     public function test_effective_plan_can_only_close_when_all_actions_are_completed(): void
     {
         [$creator, $responsible, $case] = $this->caseFixture();
-        $creator->update(['role' => 'coordinator']);
+        $creator->update(['role' => 'coordinator_medical']);
         $task = $this->createTask($creator, $responsible, $case);
         $payload = ['impact_before' => 'Incumplimiento', 'impact_after' => 'Cumplimiento sostenido', 'effectiveness_result' => 'Se alcanzó la meta', 'is_effective' => 1];
 
@@ -283,7 +283,7 @@ class ImprovementManagementTest extends TestCase
     {
         [$creator, $responsible, $case] = $this->caseFixture();
         $coordinator = User::factory()->create([
-            'role' => 'coordinator',
+            'role' => 'coordinator_medical',
             'area_id' => $case->reporting_area_id,
         ]);
         $this->createTask($creator, $responsible, $case, 'Tarea privada de otro responsable');

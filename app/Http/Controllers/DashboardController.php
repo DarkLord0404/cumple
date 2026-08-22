@@ -14,7 +14,7 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): View
     {
-        $canApprove = $request->user()->role === 'quality' || ($request->user()->role === 'coordinator' && (
+        $canApprove = $request->user()->role === 'quality' || ($request->user()->role === 'coordinator_medical' && (
             $request->user()->area()->where('slug', 'direccion-medica')->exists()
             || Area::where('slug', 'direccion-medica')->where('coordinator_id', $request->user()->id)->exists()
         ));

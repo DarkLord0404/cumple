@@ -10,7 +10,7 @@ class CaseEffectivenessController extends Controller
 {
     public function update(Request $request, ImprovementCase $case): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role, ['administrator', 'quality', 'coordinator']), 403);
+        abort_unless(in_array($request->user()->role, ['administrator', 'quality']) || $request->user()->isCoordinator(), 403);
         $data = $request->validate([
             'impact_before' => ['required', 'string'],
             'impact_after' => ['required', 'string'],

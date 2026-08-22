@@ -172,13 +172,13 @@ class CaseTaskController extends Controller
             || $task->assigned_to === $user->id
             || $task->assignees()->whereKey($user->id)->exists()
             || $task->created_by === $user->id
-            || ($user->role === 'coordinator' && $user->area_id === $task->area_id);
+            || ($user->isCoordinator() && $user->area_id === $task->area_id);
         abort_unless($allowed, 403);
     }
 
     private function isMedicalDirectorateApprover(User $user): bool
     {
-        return $user->role === 'coordinator' && (
+        return $user->role === 'coordinator_medical' && (
             $user->area()->where('slug', 'direccion-medica')->exists()
             || Area::where('slug', 'direccion-medica')->where('coordinator_id', $user->id)->exists()
         );

@@ -15,7 +15,7 @@ class AdministrationCatalogTest extends TestCase
     public function test_administrator_can_manage_areas_and_assign_a_coordinator(): void
     {
         $administrator = User::factory()->create(['role' => 'administrator']);
-        $coordinator = User::factory()->create(['role' => 'coordinator', 'is_active' => true]);
+        $coordinator = User::factory()->create(['role' => 'coordinator_medical', 'is_active' => true]);
 
         $this->actingAs($administrator)->post(route('areas.store'), [
             'name' => 'Hospitalización',
@@ -74,7 +74,7 @@ class AdministrationCatalogTest extends TestCase
     public function test_administrator_can_delete_an_unused_area(): void
     {
         $administrator = User::factory()->create(['role' => 'administrator']);
-        $coordinator = User::factory()->create(['role' => 'coordinator', 'is_active' => true]);
+        $coordinator = User::factory()->create(['role' => 'coordinator_nursing_junior', 'is_active' => true]);
         $area = Area::create([
             'name' => 'Área temporal',
             'slug' => 'area-temporal',

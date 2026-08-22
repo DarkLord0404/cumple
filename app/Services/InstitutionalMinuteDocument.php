@@ -13,7 +13,7 @@ class InstitutionalMinuteDocument
         $template = resource_path('templates/plantilla_acta_institucional.docx');
         abort_unless(is_file($template), 500, 'No está disponible la plantilla institucional.');
         $minute->loadMissing(['tasks.assignee', 'attendees']);
-        $participants = $minute->attendees->map(fn ($user) => ['name' => $user->name, 'role' => ucfirst($user->role)])
+        $participants = $minute->attendees->map(fn ($user) => ['name' => $user->name, 'role' => $user->role_label])
             ->concat(collect($minute->external_participants)->map(fn ($item) => ['name' => $item['name'] ?? '', 'role' => 'Participante externo']))
             ->values();
         $tasks = $minute->tasks->values();

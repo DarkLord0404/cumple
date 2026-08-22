@@ -19,7 +19,7 @@ class UserManagementTest extends TestCase
 
         $response = $this->actingAs($administrator)->post(route('users.store'), [
             'name' => 'Coordinador Urgencias', 'email' => 'coordinador@example.com',
-            'area_id' => $area->id, 'role' => 'coordinator',
+            'area_id' => $area->id, 'role' => 'coordinator_medical',
             'password' => 'Temporal2026', 'password_confirmation' => 'Temporal2026',
         ]);
 
@@ -28,7 +28,7 @@ class UserManagementTest extends TestCase
         $this->assertTrue($user->is_active);
         $this->assertNotNull($user->email_verified_at);
         $this->assertTrue(Hash::check('Temporal2026', $user->password));
-        $this->assertSame('coordinator', $user->role);
+        $this->assertSame('coordinator_medical', $user->role);
     }
 
     public function test_user_form_displays_validation_errors(): void
@@ -55,7 +55,7 @@ class UserManagementTest extends TestCase
         $this->actingAs($administrator)->patch(route('users.update', $user), [
             'name' => 'Usuario actualizado',
             'email' => 'actualizado@example.com',
-            'role' => 'coordinator',
+            'role' => 'coordinator_nursing_junior',
             'is_active' => false,
         ])->assertRedirect()->assertSessionHasNoErrors();
 
@@ -65,7 +65,7 @@ class UserManagementTest extends TestCase
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         $user->refresh();
-        $this->assertSame('coordinator', $user->role);
+        $this->assertSame('coordinator_nursing_junior', $user->role);
         $this->assertFalse($user->is_active);
         $this->assertTrue(Hash::check('NuevaClave2026', $user->password));
     }
@@ -94,7 +94,7 @@ class UserManagementTest extends TestCase
             'name' => $user->name,
             'email' => $user->email,
             'area_id' => $area->id,
-            'role' => 'coordinator',
+            'role' => 'coordinator_medical',
             'is_active' => true,
         ])->assertSessionHasNoErrors();
 

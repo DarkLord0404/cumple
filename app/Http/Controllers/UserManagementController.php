@@ -34,7 +34,7 @@ class UserManagementController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'area_id' => ['nullable', 'exists:areas,id'],
-            'role' => ['required', Rule::in(['administrator', 'coordinator', 'quality', 'collaborator'])],
+            'role' => ['required', Rule::in(['administrator', ...User::COORDINATOR_ROLES, 'quality', 'collaborator'])],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
             'name.required' => 'Escribe el nombre completo.',
@@ -62,7 +62,7 @@ class UserManagementController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user)],
             'area_id' => ['nullable', 'exists:areas,id'],
-            'role' => ['required', Rule::in(['administrator', 'coordinator', 'quality', 'collaborator'])],
+            'role' => ['required', Rule::in(['administrator', ...User::COORDINATOR_ROLES, 'quality', 'collaborator'])],
             'is_active' => ['required', 'boolean'],
         ]);
         if ($user->is($request->user()) && ! $data['is_active']) {
@@ -91,11 +91,11 @@ class UserManagementController extends Controller
     private function syncCoordinatedArea(User $user): void
     {
         Area::where('coordinator_id', $user->id)
-            ->when($user->role === 'coordinator' && $user->is_active && $user->area_id,
+            ->when($user->isCoordinator() && $user->is_active && $user->area_id,
                 fn ($query) => $query->whereKeyNot($user->area_id))
             ->update(['coordinator_id' => null]);
 
-        if ($user->role === 'coordinator' && $user->is_active && $user->area_id) {
+        if ($user->isCoordinator() && $user->is_active && $user->area_id) {
             Area::whereKey($user->area_id)->update(['coordinator_id' => $user->id]);
         }
     }

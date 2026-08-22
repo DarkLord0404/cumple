@@ -15,6 +15,17 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const COORDINATOR_ROLES = ['coordinator_medical', 'coordinator_nursing_junior', 'coordinator_audit'];
+
+    public const ROLE_LABELS = [
+        'administrator' => 'Administrador',
+        'coordinator_medical' => 'Coordinador médico',
+        'coordinator_nursing_junior' => 'Coordinador Jr. de enfermería',
+        'coordinator_audit' => 'Coordinadora de Auditoría',
+        'quality' => 'Calidad',
+        'collaborator' => 'Colaborador',
+    ];
+
     protected $fillable = ['area_id', 'name', 'email', 'password', 'role', 'is_active', 'email_verified_at'];
 
     /**
@@ -34,5 +45,15 @@ class User extends Authenticatable
     public function area()
     {
         return $this->belongsTo(Area::class);
+    }
+
+    public function isCoordinator(): bool
+    {
+        return in_array($this->role, self::COORDINATOR_ROLES, true);
+    }
+
+    public function getRoleLabelAttribute(): string
+    {
+        return self::ROLE_LABELS[$this->role] ?? $this->role;
     }
 }

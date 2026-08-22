@@ -133,7 +133,7 @@ class ImprovementCaseController extends Controller
             'case' => $case->load(['source', 'reportingArea', 'reportedArea', 'reporter', 'documents.uploader', 'tasks.assignee', 'tasks.assignees', 'tasks.evidences.uploader', 'tasks.qualityApprover', 'tasks.medicalApprover']),
             'users' => User::where('is_active', true)->with('area')->orderBy('name')->get(),
             'canReviewAsQuality' => auth()->user()->role === 'quality',
-            'canReviewAsMedicalDirectorate' => auth()->user()->role === 'coordinator' && (
+            'canReviewAsMedicalDirectorate' => auth()->user()->role === 'coordinator_medical' && (
                 auth()->user()->area()->where('slug', 'direccion-medica')->exists()
                 || Area::where('slug', 'direccion-medica')->where('coordinator_id', auth()->id())->exists()
             ),
