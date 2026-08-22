@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -43,6 +44,11 @@ class Task extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps();
+    }
+
     public function improvementCase(): BelongsTo
     {
         return $this->belongsTo(ImprovementCase::class);
@@ -50,9 +56,13 @@ class Task extends Model
 
     public function getResponsibleNameAttribute(): string
     {
-        return $this->assignee_type === 'external'
-            ? ($this->external_assignee_name ?: 'Responsable externo')
-            : ($this->assignee?->name ?: 'Sin asignar');
+        if ($this->assignee_type === 'external') {
+            return $this->external_assignee_name ?: 'Responsable externo';
+        }
+
+        $names = $this->assignees->pluck('name');
+
+        return $names->isNotEmpty() ? $names->join(', ') : ($this->assignee?->name ?: 'Sin asignar');
     }
 
     public function reviewer(): BelongsTo

@@ -49,21 +49,28 @@ class MeetingMinuteController extends Controller
 
     public function show(MeetingMinute $minute): View
     {
-        return view('minutes.show', ['minute' => $minute->load(['area', 'attendees', 'tasks.assignee']), 'users' => User::where('is_active', true)->orderBy('name')->get()]);
+        return view('minutes.show', ['minute' => $minute->load(['area', 'attendees', 'tasks.assignee', 'tasks.assignees']), 'users' => User::where('is_active', true)->orderBy('name')->get()]);
     }
 
     public function addCommitment(Request $request, MeetingMinute $minute): RedirectResponse
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'], 'assignee_type' => ['required', Rule::in(['internal', 'external'])],
-            'assigned_to' => ['nullable', 'required_if:assignee_type,internal', 'exists:users,id'],
+            'assigned_to' => ['nullable', 'exists:users,id'], 'assignee_ids' => ['nullable', 'array'],
+            'assignee_ids.*' => ['integer', 'distinct', 'exists:users,id'],
             'external_assignee_name' => ['nullable', 'required_if:assignee_type,external', 'string', 'max:255'],
             'due_at' => ['required', 'date'],
         ]);
+        $assigneeIds = collect($data['assignee_ids'] ?? [($data['assigned_to'] ?? null)])->filter()->unique()->values();
         if ($data['assignee_type'] === 'external') {
             $data['assigned_to'] = null;
+        } else {
+            abort_if($assigneeIds->isEmpty(), 422, 'Selecciona al menos un responsable interno.');
+            $data['assigned_to'] = $assigneeIds->first();
         }
-        Task::create($data + ['code' => 'AC-'.now()->format('Y').'-'.Str::upper(Str::random(6)), 'area_id' => $minute->area_id, 'meeting_minute_id' => $minute->id, 'created_by' => $request->user()->id, 'priority' => 'medium', 'status' => 'pending']);
+        unset($data['assignee_ids']);
+        $task = Task::create($data + ['code' => 'AC-'.now()->format('Y').'-'.Str::upper(Str::random(6)), 'area_id' => $minute->area_id, 'meeting_minute_id' => $minute->id, 'created_by' => $request->user()->id, 'priority' => 'medium', 'status' => 'pending']);
+        $task->assignees()->sync($assigneeIds);
 
         return back()->with('status', 'Compromiso agregado y asignado como acción.');
     }

@@ -46,6 +46,23 @@ class ImprovementManagementTest extends TestCase
         $this->assertSame($responsible->id, Task::first()->assigned_to);
     }
 
+    public function test_action_can_have_multiple_internal_assignees(): void
+    {
+        [$creator, , $case] = $this->caseFixture();
+        $responsibles = User::factory()->count(2)->create();
+
+        $this->actingAs($creator)->post(route('cases.tasks.store', $case), [
+            'title' => 'Implementar acción transversal', 'assignee_type' => 'internal',
+            'assignee_ids' => $responsibles->pluck('id')->all(), 'priority' => 'high',
+            'due_at' => now()->addMonth()->toDateString(),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $task = Task::firstOrFail();
+        $this->assertEqualsCanonicalizing($responsibles->pluck('id')->all(), $task->assignees()->pluck('users.id')->all());
+        $this->assertStringContainsString($responsibles[0]->name, $task->responsible_name);
+        $this->assertStringContainsString($responsibles[1]->name, $task->responsible_name);
+    }
+
     public function test_external_action_requires_and_saves_a_name(): void
     {
         [$creator, , $case] = $this->caseFixture();

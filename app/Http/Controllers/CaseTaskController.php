@@ -20,26 +20,33 @@ class CaseTaskController extends Controller
             'expected_result' => ['nullable', 'string'],
             'required_resources' => ['nullable', 'string'],
             'assignee_type' => ['required', Rule::in(['internal', 'external'])],
-            'assigned_to' => ['nullable', 'required_if:assignee_type,internal', 'exists:users,id'],
+            'assigned_to' => ['nullable', 'exists:users,id'],
+            'assignee_ids' => ['nullable', 'array'],
+            'assignee_ids.*' => ['integer', 'distinct', 'exists:users,id'],
             'external_assignee_name' => ['nullable', 'required_if:assignee_type,external', 'string', 'max:255'],
             'external_assignee_email' => ['nullable', 'email', 'max:255'],
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'critical'])],
             'due_at' => ['required', 'date'],
         ]);
 
+        $assigneeIds = collect($data['assignee_ids'] ?? [($data['assigned_to'] ?? null)])->filter()->unique()->values();
         if ($data['assignee_type'] === 'internal') {
+            abort_if($assigneeIds->isEmpty(), 422, 'Selecciona al menos un responsable interno.');
+            $data['assigned_to'] = $assigneeIds->first();
             $data['external_assignee_name'] = $data['external_assignee_email'] = null;
         } else {
             $data['assigned_to'] = null;
         }
 
-        Task::create($data + [
+        unset($data['assignee_ids']);
+        $task = Task::create($data + [
             'code' => 'AC-'.now()->format('Y').'-'.Str::upper(Str::random(6)),
             'improvement_case_id' => $case->id,
             'area_id' => $case->reporting_area_id,
             'created_by' => $request->user()->id,
             'status' => 'pending',
         ]);
+        $task->assignees()->sync($assigneeIds);
 
         return back()->with('status', 'Acción asignada correctamente.');
     }
@@ -81,6 +88,7 @@ class CaseTaskController extends Controller
         $user = $request->user();
         $allowed = in_array($user->role, ['administrator', 'quality'])
             || $task->assigned_to === $user->id
+            || $task->assignees()->whereKey($user->id)->exists()
             || $task->created_by === $user->id
             || ($user->role === 'coordinator' && $user->area_id === $task->area_id);
         abort_unless($allowed, 403);

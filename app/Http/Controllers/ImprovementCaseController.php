@@ -106,7 +106,7 @@ class ImprovementCaseController extends Controller
     public function show(ImprovementCase $case): View
     {
         return view('cases.show', [
-            'case' => $case->load(['source', 'reportingArea', 'reportedArea', 'reporter', 'documents.uploader', 'tasks.assignee', 'tasks.evidences.uploader']),
+            'case' => $case->load(['source', 'reportingArea', 'reportedArea', 'reporter', 'documents.uploader', 'tasks.assignee', 'tasks.assignees', 'tasks.evidences.uploader']),
             'users' => User::where('is_active', true)->with('area')->orderBy('name')->get(),
         ]);
     }

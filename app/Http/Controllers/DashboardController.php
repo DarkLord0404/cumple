@@ -12,7 +12,7 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): View
     {
-        $tasks = Task::query()->with(['improvementCase', 'area', 'assignee']);
+        $tasks = Task::query()->with(['improvementCase', 'area', 'assignee', 'assignees']);
         $this->applyVisibility($tasks, $request);
         $open = (clone $tasks)->whereNotIn('status', ['completed', 'cancelled']);
 
@@ -35,7 +35,9 @@ class DashboardController extends Controller
             return;
         }
         $query->where(function (Builder $query) use ($user) {
-            $query->where('assigned_to', $user->id);
+            $query->where(function ($tasks) use ($user): void {
+                $tasks->where('assigned_to', $user->id)->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->id));
+            });
             if ($user->role === 'coordinator' && $user->area_id) {
                 $query->orWhere('area_id', $user->area_id);
             }
