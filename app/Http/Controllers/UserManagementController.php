@@ -49,7 +49,8 @@ class UserManagementController extends Controller
         ]);
         $data['password'] = Hash::make($data['password']);
         $data['email_verified_at'] = now();
-        User::create($data);
+        $user = User::create($data);
+        $this->syncCoordinatedArea($user);
 
         return back()->with('status', 'Usuario creado correctamente.');
     }
@@ -68,6 +69,7 @@ class UserManagementController extends Controller
             return back()->withErrors(['user' => 'No puedes desactivar tu propia cuenta de administrador.']);
         }
         $user->update($data);
+        $this->syncCoordinatedArea($user);
 
         return back()->with('status', 'Usuario actualizado.');
     }
@@ -84,5 +86,17 @@ class UserManagementController extends Controller
         $user->update(['password' => Hash::make($data['password'])]);
 
         return back()->with('status', "Contraseña actualizada para {$user->name}.");
+    }
+
+    private function syncCoordinatedArea(User $user): void
+    {
+        Area::where('coordinator_id', $user->id)
+            ->when($user->role === 'coordinator' && $user->is_active && $user->area_id,
+                fn ($query) => $query->whereKeyNot($user->area_id))
+            ->update(['coordinator_id' => null]);
+
+        if ($user->role === 'coordinator' && $user->is_active && $user->area_id) {
+            Area::whereKey($user->area_id)->update(['coordinator_id' => $user->id]);
+        }
     }
 }

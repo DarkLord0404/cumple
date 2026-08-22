@@ -38,7 +38,7 @@ class UserManagementTest extends TestCase
             'name' => '', 'email' => 'correo-invalido', 'role' => 'collaborator',
             'password' => '123', 'password_confirmation' => '456',
         ]);
-        $response->assertOk()->assertSee('No fue posible crear el usuario')->assertSee('al menos 8 caracteres');
+        $response->assertOk()->assertSee('No fue posible guardar los cambios')->assertSee('al menos 8 caracteres');
     }
 
     public function test_non_administrator_cannot_create_users(): void
@@ -82,5 +82,22 @@ class UserManagementTest extends TestCase
         ])->assertSessionHasErrors('user');
 
         $this->assertTrue($administrator->fresh()->is_active);
+    }
+
+    public function test_coordinator_role_and_area_are_synchronized_with_area_management(): void
+    {
+        $administrator = User::factory()->create(['role' => 'administrator']);
+        $area = Area::create(['name' => 'Urgencias', 'slug' => 'urgencias']);
+        $user = User::factory()->create(['role' => 'collaborator']);
+
+        $this->actingAs($administrator)->patch(route('users.update', $user), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'area_id' => $area->id,
+            'role' => 'coordinator',
+            'is_active' => true,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame($user->id, $area->fresh()->coordinator_id);
     }
 }

@@ -20,7 +20,7 @@ class AdministrationCatalogController extends Controller
         return view('administration.catalogs', [
             'areas' => Area::with(['coordinator'])->orderBy('name')->get(),
             'sources' => FindingSource::orderBy('name')->get(),
-            'coordinators' => User::where('is_active', true)->whereIn('role', ['administrator', 'coordinator'])->orderBy('name')->get(),
+            'coordinators' => User::with('area')->where('is_active', true)->whereIn('role', ['administrator', 'coordinator'])->orderBy('name')->get(),
         ]);
     }
 
