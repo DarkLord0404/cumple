@@ -63,6 +63,21 @@ class ImprovementManagementTest extends TestCase
         $this->assertStringContainsString($responsibles[1]->name, $task->responsible_name);
     }
 
+    public function test_action_assignees_can_be_added_and_removed_from_registered_users(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $replacement = User::factory()->create(['is_active' => true]);
+        $task = $this->createTask($creator, $responsible, $case);
+        $task->assignees()->sync([$responsible->id]);
+
+        $this->actingAs($creator)->patch(route('tasks.assignees.update', $task), [
+            'assignee_ids' => [$replacement->id],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertEquals([$replacement->id], $task->assignees()->pluck('users.id')->all());
+        $this->assertSame($replacement->id, $task->fresh()->assigned_to);
+    }
+
     public function test_external_action_requires_and_saves_a_name(): void
     {
         [$creator, , $case] = $this->caseFixture();
@@ -242,6 +257,27 @@ class ImprovementManagementTest extends TestCase
             ->assertOk()
             ->assertSee($task->title)
             ->assertSee('Seguimiento y evidencias');
+    }
+
+    public function test_imported_accreditation_opportunity_is_execution_only(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $case->update([
+            'code' => 'ACR-MA4-1',
+            'analysis_method' => 'five_whys',
+            'analysis_data' => ['whys' => ['No se había estandarizado el proceso.']],
+            'root_cause' => 'Causa raíz institucional.',
+        ]);
+        $this->createTask($creator, $responsible, $case);
+
+        $this->actingAs($responsible)->get(route('cases.show', $case))
+            ->assertOk()
+            ->assertSee('No se había estandarizado el proceso.')
+            ->assertSee('Guardar responsables')
+            ->assertSee('Adjuntar evidencia')
+            ->assertDontSee('Agregar acción')
+            ->assertDontSee('Guardar priorización')
+            ->assertDontSee('Guardar verificación');
     }
 
     public function test_opportunity_portfolio_can_filter_by_type(): void

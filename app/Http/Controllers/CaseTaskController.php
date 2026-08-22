@@ -68,6 +68,19 @@ class CaseTaskController extends Controller
         return back()->with('status', 'Seguimiento de la acción actualizado.');
     }
 
+    public function updateAssignees(Request $request, Task $task): RedirectResponse
+    {
+        $this->authorizeTaskManagement($request, $task);
+        $data = $request->validate([
+            'assignee_ids' => ['required', 'array', 'min:1'],
+            'assignee_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('is_active', true)],
+        ]);
+        $task->assignees()->sync($data['assignee_ids']);
+        $task->update(['assigned_to' => $data['assignee_ids'][0], 'assignee_type' => 'internal']);
+
+        return back()->with('status', 'Responsables actualizados.');
+    }
+
     public function storeEvidence(Request $request, Task $task): RedirectResponse
     {
         $this->authorizeTaskManagement($request, $task);

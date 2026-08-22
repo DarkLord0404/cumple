@@ -49,6 +49,12 @@ class ImportAccreditationPlans extends Command
                 $first = $group->first();
                 $macro = Str::before($first['macroarea'], ' ');
                 $caseCode = "ACR-{$macro}-{$first['opportunity_number']}";
+                $causalSteps = collect($first['causal_steps'] ?? $group->pluck('causal_step'))
+                    ->filter()->unique()->values();
+                $rootCause = $causalSteps->first(fn ($step) => Str::contains(Str::upper(Str::ascii($step)), 'CAUSA RAIZ'))
+                    ?: ($first['root_cause'] ?? $causalSteps->last());
+                $whys = $causalSteps->reject(fn ($step) => Str::contains(Str::upper(Str::ascii($step)), 'CAUSA RAIZ'))
+                    ->take(5)->values()->all();
                 $case = ImprovementCase::updateOrCreate(['code' => $caseCode], [
                     'title' => Str::limit($first['standard'] ?: $first['opportunity'], 250, ''),
                     'finding_source_id' => $source->id,
@@ -60,8 +66,9 @@ class ImportAccreditationPlans extends Command
                     'finding_description' => $first['opportunity'],
                     'status' => 'action_plan',
                     'analysis_method' => 'five_whys',
-                    'root_cause' => $first['root_cause'] ?? null,
+                    'root_cause' => $rootCause,
                     'analysis_data' => [
+                        'whys' => $whys,
                         'macroarea' => $first['macroarea'], 'process' => $first['process'],
                         'institutional_owner' => $first['opportunity_owner'],
                         'source_file' => $first['source_file'], 'sheet' => $first['sheet'],

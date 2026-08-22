@@ -33,6 +33,7 @@ Route::middleware('auth')->group(function () {
     Route::post('hallazgos/{case}/documentos', [OfficialDocumentController::class, 'store'])->name('cases.documents.store');
     Route::get('documentos/{document}/descargar', [OfficialDocumentController::class, 'download'])->name('documents.download');
     Route::patch('acciones/{task}', [CaseTaskController::class, 'update'])->name('tasks.update');
+    Route::patch('acciones/{task}/responsables', [CaseTaskController::class, 'updateAssignees'])->name('tasks.assignees.update');
     Route::post('acciones/{task}/evidencias', [CaseTaskController::class, 'storeEvidence'])->name('tasks.evidence.store');
     Route::get('evidencias/{evidence}/descargar', [EvidenceController::class, 'download'])->name('evidence.download');
     Route::get('usuarios', [UserManagementController::class, 'index'])->name('users.index');
