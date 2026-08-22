@@ -37,7 +37,7 @@
                     @endforeach
                 </div>
             </section>
-            <footer class="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 pt-3 text-[10px] text-slate-500 sm:pt-4 sm:text-xs"><span>© {{ date('Y') }} Koqoi · Información protegida</span><span class="text-right font-bold tracking-[.14em] text-slate-400 sm:tracking-[.18em]">CUMPLE POR KOQOI</span></footer>
+            <footer class="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/10 pt-3 text-[10px] text-slate-500 sm:pt-4 sm:text-xs"><span>© {{ date('Y') }} Koqoi</span><nav aria-label="Información legal" class="flex flex-wrap justify-end gap-x-4 gap-y-1 font-semibold text-slate-400"><a href="{{ route('legal.privacy') }}" class="hover:text-emerald-300">Privacidad</a><a href="{{ route('legal.terms') }}" class="hover:text-emerald-300">Términos</a><a href="{{ route('legal.data-processing') }}" class="hover:text-emerald-300">Datos personales</a><a href="mailto:info@koqoi.com" class="hover:text-emerald-300">Contacto</a></nav></footer>
         </div>
     </main>
 </body>

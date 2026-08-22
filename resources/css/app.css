@@ -23,3 +23,25 @@
         @apply bg-emerald-200 text-emerald-950;
     }
 }
+
+@layer components {
+    .legal-copy {
+        @apply text-[15px] leading-7 text-slate-700;
+    }
+
+    .legal-copy h2 {
+        @apply mb-3 mt-8 text-xl font-bold tracking-tight text-slate-950;
+    }
+
+    .legal-copy p {
+        @apply my-4;
+    }
+
+    .legal-copy ul {
+        @apply my-4 list-disc space-y-2 pl-6;
+    }
+
+    .legal-copy a {
+        @apply break-words font-semibold text-emerald-700 underline decoration-emerald-200 underline-offset-2 hover:text-emerald-900;
+    }
+}

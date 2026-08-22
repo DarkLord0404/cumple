@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+Route::view('/terminos-y-condiciones', 'legal.terms')->name('legal.terms');
+Route::view('/politica-de-privacidad', 'legal.privacy')->name('legal.privacy');
+Route::view('/tratamiento-de-datos-personales', 'legal.data-processing')->name('legal.data-processing');
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 

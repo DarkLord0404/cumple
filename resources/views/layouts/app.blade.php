@@ -34,6 +34,7 @@
             <main class="min-w-0 overflow-x-hidden">
                 {{ $slot }}
             </main>
+            <footer class="border-t border-slate-200 bg-white"><nav aria-label="Información legal" class="mx-auto flex max-w-7xl flex-wrap justify-center gap-x-5 gap-y-2 px-4 py-5 text-xs font-semibold text-slate-500 sm:px-6 lg:px-8"><a href="{{ route('legal.privacy') }}" class="hover:text-emerald-700">Política de privacidad</a><a href="{{ route('legal.terms') }}" class="hover:text-emerald-700">Términos y condiciones</a><a href="{{ route('legal.data-processing') }}" class="hover:text-emerald-700">Tratamiento de datos</a><a href="mailto:info@koqoi.com" class="hover:text-emerald-700">Soporte y contacto</a></nav></footer>
         </div>
     </body>
 </html>

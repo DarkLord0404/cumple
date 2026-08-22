@@ -42,6 +42,7 @@
                     {{ $slot }}
                 </div>
                 <p class="mt-6 text-center text-xs text-slate-500">CUMPLE · Control Unificado de Metas, Pendientes, Logros y Evidencias</p>
+                <nav aria-label="Información legal" class="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-500"><a href="{{ route('legal.privacy') }}" class="hover:text-emerald-700">Privacidad</a><a href="{{ route('legal.terms') }}" class="hover:text-emerald-700">Términos</a><a href="{{ route('legal.data-processing') }}" class="hover:text-emerald-700">Datos personales</a></nav>
             </div>
         </section>
     </main>
