@@ -14,6 +14,10 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): View
     {
+        $canApprove = $request->user()->role === 'quality' || ($request->user()->role === 'coordinator' && (
+            $request->user()->area()->where('slug', 'direccion-medica')->exists()
+            || Area::where('slug', 'direccion-medica')->where('coordinator_id', $request->user()->id)->exists()
+        ));
         $tasks = Task::query()->with(['improvementCase', 'area', 'assignee', 'assignees']);
         $this->applyVisibility($tasks, $request);
         $open = (clone $tasks)->whereNotIn('status', ['completed', 'cancelled']);
@@ -32,6 +36,9 @@ class DashboardController extends Controller
             'openCases' => ImprovementCase::whereNotIn('status', ['closed', 'cancelled'])->count(),
             'areas' => Area::where('is_active', true)->orderBy('name')->get(),
             'users' => User::where('is_active', true)->orderBy('name')->get(),
+            'reviewTasks' => $canApprove
+                ? Task::with(['improvementCase', 'assignees'])->where('status', 'in_review')->oldest('submitted_at')->get()
+                : collect(),
         ]);
     }
 
@@ -49,10 +56,10 @@ class DashboardController extends Controller
         $query->when($request->filled('q'), function (Builder $query) use ($request): void {
             $search = '%'.$request->string('q')->trim().'%';
             $query->where(function (Builder $query) use ($search): void {
-                $query->where('title', 'ilike', $search)
-                    ->orWhere('description', 'ilike', $search)
+                $query->whereLike('title', $search, caseSensitive: false)
+                    ->orWhereLike('description', $search, caseSensitive: false)
                     ->orWhereHas('improvementCase', fn (Builder $case) => $case
-                        ->where('code', 'ilike', $search)->orWhere('title', 'ilike', $search));
+                        ->whereLike('code', $search, caseSensitive: false)->orWhereLike('title', $search, caseSensitive: false));
             });
         });
         $query->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->string('status')));

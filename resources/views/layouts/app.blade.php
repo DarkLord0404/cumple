@@ -28,7 +28,7 @@
             @endisset
 
             <!-- Page Content -->
-            <main>
+            <main class="min-w-0 overflow-x-hidden">
                 {{ $slot }}
             </main>
         </div>

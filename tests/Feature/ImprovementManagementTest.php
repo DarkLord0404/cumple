@@ -78,6 +78,51 @@ class ImprovementManagementTest extends TestCase
         $this->assertSame($replacement->id, $task->fresh()->assigned_to);
     }
 
+    public function test_action_requires_quality_and_medical_directorate_approval_to_close(): void
+    {
+        Storage::fake('local');
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $quality = User::factory()->create(['role' => 'quality']);
+        $medicalDirector = User::factory()->create(['role' => 'coordinator']);
+        Area::create([
+            'name' => 'Dirección Médica',
+            'slug' => 'direccion-medica',
+            'coordinator_id' => $medicalDirector->id,
+        ]);
+        $task = $this->createTask($creator, $responsible, $case);
+
+        $this->actingAs($responsible)->post(route('tasks.evidence.store', $task), [
+            'evidence' => UploadedFile::fake()->create('soporte.pdf', 20, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($responsible)->patch(route('tasks.update', $task), [
+            'status' => 'in_review', 'progress' => 100,
+        ])->assertSessionHasNoErrors();
+
+        $this->actingAs($quality)->patch(route('tasks.review', $task), ['decision' => 'approve'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('in_review', $task->fresh()->status);
+        $this->assertNotNull($task->fresh()->quality_approved_at);
+
+        $this->actingAs($medicalDirector)->patch(route('tasks.review', $task), ['decision' => 'approve'])
+            ->assertSessionHasNoErrors();
+        $task->refresh();
+        $this->assertSame('completed', $task->status);
+        $this->assertSame(100, $task->progress);
+        $this->assertNotNull($task->medical_approved_at);
+    }
+
+    public function test_action_cannot_be_submitted_for_review_without_evidence(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $task = $this->createTask($creator, $responsible, $case);
+
+        $this->actingAs($responsible)->patch(route('tasks.update', $task), [
+            'status' => 'in_review', 'progress' => 100,
+        ])->assertStatus(422);
+
+        $this->assertSame('pending', $task->fresh()->status);
+    }
+
     public function test_external_action_requires_and_saves_a_name(): void
     {
         [$creator, , $case] = $this->caseFixture();

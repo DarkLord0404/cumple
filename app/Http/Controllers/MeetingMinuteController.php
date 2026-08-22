@@ -59,7 +59,7 @@ class MeetingMinuteController extends Controller
             'assigned_to' => ['nullable', 'exists:users,id'], 'assignee_ids' => ['nullable', 'array'],
             'assignee_ids.*' => ['integer', 'distinct', 'exists:users,id'],
             'external_assignee_name' => ['nullable', 'required_if:assignee_type,external', 'string', 'max:255'],
-            'due_at' => ['required', 'date'],
+            'due_at' => ['required', 'date'], 'expected_result' => ['nullable', 'string'],
         ]);
         $assigneeIds = collect($data['assignee_ids'] ?? [($data['assigned_to'] ?? null)])->filter()->unique()->values();
         if ($data['assignee_type'] === 'external') {

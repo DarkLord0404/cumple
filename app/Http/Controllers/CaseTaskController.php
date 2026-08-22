@@ -2,15 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Area;
 use App\Models\ImprovementCase;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class CaseTaskController extends Controller
 {
+    public function show(Request $request, Task $task): View
+    {
+        $this->authorizeTaskManagement($request, $task);
+        $user = $request->user();
+
+        return view('tasks.show', [
+            'task' => $task->load(['improvementCase', 'minute', 'area', 'assignees', 'evidences.uploader', 'qualityApprover', 'medicalApprover']),
+            'users' => User::where('is_active', true)->with('area')->orderBy('name')->get(),
+            'canReviewAsQuality' => $user->role === 'quality',
+            'canReviewAsMedicalDirectorate' => $this->isMedicalDirectorateApprover($user),
+        ]);
+    }
+
     public function store(Request $request, ImprovementCase $case): RedirectResponse
     {
         abort_if($case->status === 'closed', 422, 'Un plan cerrado no admite nuevas acciones. Debe marcarse como no eficaz para reabrirlo.');
@@ -55,17 +71,69 @@ class CaseTaskController extends Controller
     {
         $this->authorizeTaskManagement($request, $task);
         $data = $request->validate([
-            'status' => ['required', Rule::in(['pending', 'in_progress', 'in_review', 'completed', 'cancelled'])],
+            'status' => ['required', Rule::in(['pending', 'in_progress', 'in_review', 'cancelled'])],
             'progress' => ['required', 'integer', 'min:0', 'max:100'],
             'review_notes' => ['nullable', 'string'],
         ]);
-        if ($data['status'] === 'completed') {
-            $data['progress'] = 100;
-            $data['completed_at'] = now();
+        if ($data['status'] === 'in_review') {
+            abort_if($task->evidences()->doesntExist(), 422, 'Adjunta al menos una evidencia antes de enviar la acción a revisión.');
+            $data['submitted_at'] = now();
+        } else {
+            $data += [
+                'submitted_at' => null,
+                'completed_at' => null,
+                'reviewed_by' => null,
+                'quality_approved_by' => null,
+                'quality_approved_at' => null,
+                'medical_approved_by' => null,
+                'medical_approved_at' => null,
+            ];
         }
         $task->update($data);
 
         return back()->with('status', 'Seguimiento de la acción actualizado.');
+    }
+
+    public function review(Request $request, Task $task): RedirectResponse
+    {
+        abort_unless($task->status === 'in_review', 422, 'La acción debe estar en revisión.');
+        $data = $request->validate([
+            'decision' => ['required', Rule::in(['approve', 'reject'])],
+            'review_notes' => ['nullable', 'required_if:decision,reject', 'string', 'max:2000'],
+        ]);
+        $user = $request->user();
+        $isQuality = $user->role === 'quality';
+        $isMedicalDirectorate = $this->isMedicalDirectorateApprover($user);
+        abort_unless($isQuality || $isMedicalDirectorate, 403, 'Solo Calidad o Dirección Médica pueden revisar esta acción.');
+
+        if ($data['decision'] === 'reject') {
+            $task->update([
+                'status' => 'in_progress',
+                'reviewed_by' => $user->id,
+                'review_notes' => $data['review_notes'],
+                'submitted_at' => null,
+                'completed_at' => null,
+                'quality_approved_by' => null,
+                'quality_approved_at' => null,
+                'medical_approved_by' => null,
+                'medical_approved_at' => null,
+            ]);
+
+            return back()->with('status', 'La acción fue devuelta al responsable con observaciones.');
+        }
+
+        $approval = $isQuality
+            ? ['quality_approved_by' => $user->id, 'quality_approved_at' => now()]
+            : ['medical_approved_by' => $user->id, 'medical_approved_at' => now()];
+        $task->update($approval + ['reviewed_by' => $user->id, 'review_notes' => $data['review_notes'] ?? $task->review_notes]);
+        $task->refresh();
+        if ($task->quality_approved_at && $task->medical_approved_at) {
+            $task->update(['status' => 'completed', 'progress' => 100, 'completed_at' => now()]);
+
+            return back()->with('status', 'Acción cerrada con aprobación de Calidad y Dirección Médica.');
+        }
+
+        return back()->with('status', 'Aprobación registrada. Falta la aprobación de la otra instancia.');
     }
 
     public function updateAssignees(Request $request, Task $task): RedirectResponse
@@ -100,10 +168,19 @@ class CaseTaskController extends Controller
     {
         $user = $request->user();
         $allowed = in_array($user->role, ['administrator', 'quality'])
+            || $this->isMedicalDirectorateApprover($user)
             || $task->assigned_to === $user->id
             || $task->assignees()->whereKey($user->id)->exists()
             || $task->created_by === $user->id
             || ($user->role === 'coordinator' && $user->area_id === $task->area_id);
         abort_unless($allowed, 403);
+    }
+
+    private function isMedicalDirectorateApprover(User $user): bool
+    {
+        return $user->role === 'coordinator' && (
+            $user->area()->where('slug', 'direccion-medica')->exists()
+            || Area::where('slug', 'direccion-medica')->where('coordinator_id', $user->id)->exists()
+        );
     }
 }

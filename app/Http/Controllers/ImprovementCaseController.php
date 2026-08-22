@@ -27,8 +27,8 @@ class ImprovementCaseController extends Controller
         }
         $query->when($request->filled('q'), function ($query) use ($request): void {
             $search = '%'.$request->string('q')->trim().'%';
-            $query->where(fn ($query) => $query->where('code', 'ilike', $search)
-                ->orWhere('title', 'ilike', $search)->orWhere('finding_description', 'ilike', $search));
+            $query->where(fn ($query) => $query->whereLike('code', $search, caseSensitive: false)
+                ->orWhereLike('title', $search, caseSensitive: false)->orWhereLike('finding_description', $search, caseSensitive: false));
         });
         $query->when($request->filled('source_id'), fn ($query) => $query->where('finding_source_id', $request->integer('source_id')));
         $query->when($request->filled('action_type'), fn ($query) => $query->where('action_type', $request->string('action_type')));
@@ -130,8 +130,13 @@ class ImprovementCaseController extends Controller
     public function show(ImprovementCase $case): View
     {
         return view('cases.show', [
-            'case' => $case->load(['source', 'reportingArea', 'reportedArea', 'reporter', 'documents.uploader', 'tasks.assignee', 'tasks.assignees', 'tasks.evidences.uploader']),
+            'case' => $case->load(['source', 'reportingArea', 'reportedArea', 'reporter', 'documents.uploader', 'tasks.assignee', 'tasks.assignees', 'tasks.evidences.uploader', 'tasks.qualityApprover', 'tasks.medicalApprover']),
             'users' => User::where('is_active', true)->with('area')->orderBy('name')->get(),
+            'canReviewAsQuality' => auth()->user()->role === 'quality',
+            'canReviewAsMedicalDirectorate' => auth()->user()->role === 'coordinator' && (
+                auth()->user()->area()->where('slug', 'direccion-medica')->exists()
+                || Area::where('slug', 'direccion-medica')->where('coordinator_id', auth()->id())->exists()
+            ),
         ]);
     }
 
