@@ -23,6 +23,7 @@
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                             {{ __('Usuarios') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('administration.catalogs')" :active="request()->routeIs('administration.*')">Configuración</x-nav-link>
                     @endif
                 </div>
             </div>
@@ -83,6 +84,7 @@
             <x-responsive-nav-link :href="route('minutes.index')" :active="request()->routeIs('minutes.*')">Actas</x-responsive-nav-link>
             @if(Auth::user()->role === 'administrator')
                 <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">Usuarios</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('administration.catalogs')" :active="request()->routeIs('administration.*')">Configuración</x-responsive-nav-link>
             @endif
         </div>
 

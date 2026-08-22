@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdministrationCatalogController;
 use App\Http\Controllers\CaseAnalysisController;
 use App\Http\Controllers\CaseEffectivenessController;
 use App\Http\Controllers\CaseTaskController;
@@ -37,6 +38,12 @@ Route::middleware('auth')->group(function () {
     Route::get('usuarios', [UserManagementController::class, 'index'])->name('users.index');
     Route::post('usuarios', [UserManagementController::class, 'store'])->name('users.store');
     Route::patch('usuarios/{user}', [UserManagementController::class, 'update'])->name('users.update');
+    Route::patch('usuarios/{user}/contrasena', [UserManagementController::class, 'resetPassword'])->name('users.password.update');
+    Route::get('administracion/catalogos', [AdministrationCatalogController::class, 'index'])->name('administration.catalogs');
+    Route::post('administracion/areas', [AdministrationCatalogController::class, 'storeArea'])->name('areas.store');
+    Route::patch('administracion/areas/{area}', [AdministrationCatalogController::class, 'updateArea'])->name('areas.update');
+    Route::post('administracion/fuentes', [AdministrationCatalogController::class, 'storeSource'])->name('sources.store');
+    Route::patch('administracion/fuentes/{source}', [AdministrationCatalogController::class, 'updateSource'])->name('sources.update');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

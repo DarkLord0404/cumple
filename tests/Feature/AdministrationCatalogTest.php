@@ -1,0 +1,72 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Area;
+use App\Models\FindingSource;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class AdministrationCatalogTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_administrator_can_manage_areas_and_assign_a_coordinator(): void
+    {
+        $administrator = User::factory()->create(['role' => 'administrator']);
+        $coordinator = User::factory()->create(['role' => 'coordinator', 'is_active' => true]);
+
+        $this->actingAs($administrator)->post(route('areas.store'), [
+            'name' => 'Hospitalización',
+            'description' => 'Servicios de hospitalización',
+            'coordinator_id' => $coordinator->id,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $area = Area::where('slug', 'hospitalizacion')->firstOrFail();
+        $this->assertSame($coordinator->id, $area->coordinator_id);
+
+        $this->actingAs($administrator)->patch(route('areas.update', $area), [
+            'name' => 'Hospitalización adultos',
+            'description' => 'Área actualizada',
+            'coordinator_id' => $coordinator->id,
+            'is_active' => false,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('areas', [
+            'id' => $area->id,
+            'slug' => 'hospitalizacion-adultos',
+            'is_active' => false,
+        ]);
+    }
+
+    public function test_administrator_can_manage_finding_sources(): void
+    {
+        $administrator = User::factory()->create(['role' => 'administrator']);
+
+        $this->actingAs($administrator)->post(route('sources.store'), [
+            'name' => 'Auditoría externa',
+            'is_invima' => false,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $source = FindingSource::where('name', 'Auditoría externa')->firstOrFail();
+        $this->actingAs($administrator)->patch(route('sources.update', $source), [
+            'name' => 'Visita INVIMA',
+            'is_invima' => true,
+            'is_active' => false,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $source->refresh();
+        $this->assertTrue($source->is_invima);
+        $this->assertFalse($source->is_active);
+    }
+
+    public function test_non_administrator_cannot_manage_catalogs(): void
+    {
+        $user = User::factory()->create(['role' => 'collaborator']);
+
+        $this->actingAs($user)->get(route('administration.catalogs'))->assertForbidden();
+        $this->actingAs($user)->post(route('areas.store'), [])->assertForbidden();
+        $this->actingAs($user)->post(route('sources.store'), [])->assertForbidden();
+    }
+}

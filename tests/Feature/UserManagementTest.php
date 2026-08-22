@@ -46,4 +46,41 @@ class UserManagementTest extends TestCase
         $collaborator = User::factory()->create(['role' => 'collaborator']);
         $this->actingAs($collaborator)->post(route('users.store'), [])->assertForbidden();
     }
+
+    public function test_administrator_can_update_a_user_and_reset_their_password(): void
+    {
+        $administrator = User::factory()->create(['role' => 'administrator']);
+        $user = User::factory()->create(['role' => 'collaborator', 'is_active' => true]);
+
+        $this->actingAs($administrator)->patch(route('users.update', $user), [
+            'name' => 'Usuario actualizado',
+            'email' => 'actualizado@example.com',
+            'role' => 'coordinator',
+            'is_active' => false,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->actingAs($administrator)->patch(route('users.password.update', $user), [
+            'password' => 'NuevaClave2026',
+            'password_confirmation' => 'NuevaClave2026',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $user->refresh();
+        $this->assertSame('coordinator', $user->role);
+        $this->assertFalse($user->is_active);
+        $this->assertTrue(Hash::check('NuevaClave2026', $user->password));
+    }
+
+    public function test_administrator_cannot_deactivate_their_own_account(): void
+    {
+        $administrator = User::factory()->create(['role' => 'administrator', 'is_active' => true]);
+
+        $this->actingAs($administrator)->patch(route('users.update', $administrator), [
+            'name' => $administrator->name,
+            'email' => $administrator->email,
+            'role' => 'administrator',
+            'is_active' => false,
+        ])->assertSessionHasErrors('user');
+
+        $this->assertTrue($administrator->fresh()->is_active);
+    }
 }

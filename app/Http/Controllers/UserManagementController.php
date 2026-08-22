@@ -64,8 +64,25 @@ class UserManagementController extends Controller
             'role' => ['required', Rule::in(['administrator', 'coordinator', 'quality', 'collaborator'])],
             'is_active' => ['required', 'boolean'],
         ]);
+        if ($user->is($request->user()) && ! $data['is_active']) {
+            return back()->withErrors(['user' => 'No puedes desactivar tu propia cuenta de administrador.']);
+        }
         $user->update($data);
 
         return back()->with('status', 'Usuario actualizado.');
+    }
+
+    public function resetPassword(Request $request, User $user): RedirectResponse
+    {
+        $this->authorizeAdministrator($request);
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'password.min' => 'La nueva contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+        ]);
+        $user->update(['password' => Hash::make($data['password'])]);
+
+        return back()->with('status', "Contraseña actualizada para {$user->name}.");
     }
 }
