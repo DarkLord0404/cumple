@@ -207,6 +207,18 @@ class ImprovementManagementTest extends TestCase
         Storage::disk('local')->assertExists($case->documents->first()->path);
     }
 
+    public function test_dashboard_can_filter_tasks_by_search_text(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $this->createTask($creator, $responsible, $case, 'Auditar protocolo de urgencias');
+        $this->createTask($creator, $responsible, $case, 'Actualizar guía quirúrgica');
+
+        $this->actingAs($responsible)->get(route('dashboard', ['q' => 'urgencias']))
+            ->assertOk()
+            ->assertSee('Auditar protocolo de urgencias')
+            ->assertDontSee('Actualizar guía quirúrgica');
+    }
+
     private function caseFixture(bool $invima = false): array
     {
         $creator = User::factory()->create();

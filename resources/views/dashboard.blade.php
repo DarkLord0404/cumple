@@ -1,20 +1,38 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div><p class="text-sm font-semibold text-emerald-700">Resumen de gestión</p><h2 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Buenos días, {{ auth()->user()->name }}</h2></div>
-    </x-slot>
-    <div class="py-10">
-        <div class="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                @foreach ([['Pendientes', $metrics['pending'], 'text-amber-800 bg-amber-50 ring-amber-200'], ['En ejecución', $metrics['in_progress'], 'text-emerald-800 bg-emerald-50 ring-emerald-200'], ['Por revisar', $metrics['in_review'], 'text-teal-800 bg-teal-50 ring-teal-200'], ['Vencidas', $metrics['overdue'], 'text-rose-800 bg-rose-50 ring-rose-200']] as [$label, $value, $color])
-                    <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><div class="mb-4 inline-flex rounded-lg px-3 py-1 text-xs font-semibold ring-1 {{ $color }}">{{ $label }}</div><div class="text-4xl font-extrabold tracking-tight text-slate-900">{{ $value }}</div></div>
-                @endforeach
-            </div>
-            <div class="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-                <section class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><div class="flex items-center justify-between"><div><h3 class="font-bold text-slate-900">Pendientes próximos</h3><p class="mt-1 text-sm text-slate-500">Ordenados por la fecha límite más cercana.</p></div><a href="{{ route('cases.index') }}" class="text-sm font-bold text-emerald-700">Ver planes</a></div>
-                    <div class="mt-5 divide-y divide-slate-100">@forelse($upcomingTasks as $task)<a href="{{ $task->improvementCase ? route('cases.show',$task->improvementCase) : '#' }}" class="flex items-center justify-between gap-4 py-4"><div class="min-w-0"><p class="truncate font-semibold text-slate-900">{{ $task->title }}</p><p class="mt-1 truncate text-xs text-slate-500">{{ $task->improvementCase?->code ?? 'Tarea independiente' }} · {{ $task->area->name }}</p></div><div class="shrink-0 text-right"><p class="text-sm font-bold {{ $task->due_at?->isPast() ? 'text-rose-700' : 'text-slate-700' }}">{{ $task->due_at?->format('d/m/Y') ?? 'Sin fecha' }}</p><p class="text-xs text-slate-500">{{ $task->progress }}% completado</p></div></a>@empty<div class="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">No tienes acciones pendientes.</div>@endforelse</div>
-                </section>
-                <section class="rounded-2xl bg-emerald-900 p-6 text-white shadow-sm"><p class="text-sm font-semibold text-emerald-200">Control general</p><div class="mt-3 text-5xl font-extrabold">{{ $openCases }}</div><h3 class="mt-2 text-xl font-bold tracking-tight">planes abiertos</h3><p class="mt-4 text-sm leading-6 text-emerald-50/80">Un plan solamente puede cerrarse cuando todas sus acciones estén terminadas y la verificación confirme que fue eficaz.</p></section>
-            </div>
+    <x-slot name="header"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-semibold text-emerald-700">Resumen de gestión</p><h2 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Buenos días, {{ auth()->user()->name }}</h2></div><a href="{{ route('cases.index') }}" class="inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800">Ver oportunidades</a></div></x-slot>
+    <div class="py-8"><div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+        <div class="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            @foreach ([['Pendientes', $metrics['pending'], 'text-amber-800 bg-amber-50 ring-amber-200'], ['En ejecución', $metrics['in_progress'], 'text-emerald-800 bg-emerald-50 ring-emerald-200'], ['Por revisar', $metrics['in_review'], 'text-teal-800 bg-teal-50 ring-teal-200'], ['Vencidas', $metrics['overdue'], 'text-rose-800 bg-rose-50 ring-rose-200']] as [$label, $value, $color])
+                <div class="min-w-0 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5"><div class="inline-flex max-w-full rounded-lg px-2.5 py-1 text-xs font-semibold ring-1 {{ $color }}">{{ $label }}</div><div class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">{{ $value }}</div></div>
+            @endforeach
         </div>
-    </div>
+
+        <section class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><h3 class="text-lg font-bold text-slate-900">Buscar y ejecutar tareas</h3><p class="mt-1 text-sm text-slate-500">Filtra tus acciones y abre la oportunidad para actualizar avance o cargar evidencias.</p></div><p class="text-sm font-semibold text-slate-500">{{ $taskResults->total() }} resultados</p></div>
+            <form method="GET" action="{{ route('dashboard') }}" class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+                <div class="md:col-span-2 xl:col-span-2"><x-input-label for="q" value="Buscar"/><input id="q" name="q" value="{{ request('q') }}" placeholder="Tarea, código u oportunidad" class="mt-1 block w-full rounded-xl border-slate-300 text-sm"></div>
+                <div><x-input-label for="status" value="Estado"/><select id="status" name="status" class="mt-1 block w-full rounded-xl border-slate-300 text-sm"><option value="">Todos</option>@foreach(['pending'=>'Pendiente','in_progress'=>'En ejecución','in_review'=>'Por revisar','completed'=>'Completada','cancelled'=>'Cancelada'] as $value=>$label)<option value="{{ $value }}" @selected(request('status')===$value)>{{ $label }}</option>@endforeach</select></div>
+                <div><x-input-label for="assignee_id" value="Responsable"/><select id="assignee_id" name="assignee_id" class="mt-1 block w-full rounded-xl border-slate-300 text-sm"><option value="">Todos</option>@foreach($users as $user)<option value="{{ $user->id }}" @selected((string)request('assignee_id')===(string)$user->id)>{{ $user->name }}</option>@endforeach</select></div>
+                <div><x-input-label for="area_id" value="Área"/><select id="area_id" name="area_id" class="mt-1 block w-full rounded-xl border-slate-300 text-sm"><option value="">Todas</option>@foreach($areas as $area)<option value="{{ $area->id }}" @selected((string)request('area_id')===(string)$area->id)>{{ $area->name }}</option>@endforeach</select></div>
+                <div><x-input-label for="due" value="Fecha"/><select id="due" name="due" class="mt-1 block w-full rounded-xl border-slate-300 text-sm"><option value="">Cualquier fecha</option><option value="overdue" @selected(request('due')==='overdue')>Vencidas</option><option value="next_7_days" @selected(request('due')==='next_7_days')>Próximos 7 días</option><option value="no_date" @selected(request('due')==='no_date')>Sin fecha</option></select></div>
+                <div class="flex flex-wrap items-center gap-3 md:col-span-2 xl:col-span-6"><x-primary-button>Aplicar filtros</x-primary-button>@if(request()->hasAny(['q','status','assignee_id','area_id','due']))<a href="{{ route('dashboard') }}" class="text-sm font-bold text-slate-600 hover:text-slate-900">Limpiar filtros</a>@endif</div>
+            </form>
+        </section>
+
+        <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
+            <section class="min-w-0 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
+                <div class="space-y-3">@forelse($taskResults as $task)
+                    @php($labels=['pending'=>'Pendiente','in_progress'=>'En ejecución','in_review'=>'Por revisar','completed'=>'Completada','cancelled'=>'Cancelada'])
+                    <article class="min-w-0 rounded-2xl border border-slate-200 p-4 transition hover:border-emerald-300 hover:shadow-sm">
+                        <div class="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">{{ $task->improvementCase?->code ?? $task->code }}</span><span class="rounded-full px-2 py-1 text-[11px] font-bold {{ $task->status==='completed' ? 'bg-emerald-50 text-emerald-700' : ($task->due_at?->isPast() ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700') }}">{{ $labels[$task->status] ?? $task->status }}</span></div><h4 class="mt-3 break-words font-bold leading-6 text-slate-900">{{ $task->title }}</h4><p class="mt-2 break-words text-sm text-slate-600"><span class="font-semibold">Responsables:</span> {{ $task->responsible_name }}</p><p class="mt-1 text-xs text-slate-500">{{ $task->area?->name ?? 'Sin área' }} · {{ $task->progress }}% completado</p></div>
+                            <div class="flex shrink-0 flex-row items-center justify-between gap-4 border-t border-slate-100 pt-3 lg:flex-col lg:items-end lg:border-0 lg:pt-0"><div class="lg:text-right"><p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Fecha límite</p><p class="mt-1 text-sm font-bold {{ $task->due_at?->isPast() && $task->status!=='completed' ? 'text-rose-700' : 'text-slate-700' }}">{{ $task->due_at?->format('d/m/Y') ?? 'Sin fecha' }}</p></div>@if($task->improvementCase)<a href="{{ route('cases.show',$task->improvementCase) }}#task-{{ $task->id }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-center text-sm font-bold text-white hover:bg-emerald-700">Abrir y ejecutar</a>@endif</div>
+                        </div>
+                    </article>
+                @empty<div class="rounded-xl border border-dashed border-slate-300 p-10 text-center"><p class="font-semibold text-slate-700">No encontramos tareas con estos filtros.</p><a href="{{ route('dashboard') }}" class="mt-2 inline-block text-sm font-bold text-emerald-700">Mostrar todas</a></div>@endforelse</div>
+                <div class="mt-5">{{ $taskResults->links() }}</div>
+            </section>
+            <aside class="rounded-2xl bg-emerald-950 p-5 text-white shadow-sm"><p class="text-sm font-semibold text-emerald-200">Control general</p><div class="mt-3 text-4xl font-extrabold">{{ $openCases }}</div><h3 class="mt-1 text-lg font-bold">oportunidades abiertas</h3><ol class="mt-5 space-y-3 text-sm leading-6 text-emerald-50/90"><li><span class="font-bold text-white">1.</span> Busca o filtra una tarea.</li><li><span class="font-bold text-white">2.</span> Pulsa “Abrir y ejecutar”.</li><li><span class="font-bold text-white">3.</span> Actualiza estado y avance.</li><li><span class="font-bold text-white">4.</span> Adjunta la evidencia correspondiente.</li></ol><a href="{{ route('cases.index') }}" class="mt-5 inline-flex rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/20 hover:bg-white/20">Explorar oportunidades</a></aside>
+        </div>
+    </div></div>
 </x-app-layout>

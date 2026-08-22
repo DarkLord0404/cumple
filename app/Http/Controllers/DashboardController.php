@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Area;
 use App\Models\ImprovementCase;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -15,6 +17,8 @@ class DashboardController extends Controller
         $tasks = Task::query()->with(['improvementCase', 'area', 'assignee', 'assignees']);
         $this->applyVisibility($tasks, $request);
         $open = (clone $tasks)->whereNotIn('status', ['completed', 'cancelled']);
+        $filtered = clone $tasks;
+        $this->applyFilters($filtered, $request);
 
         return view('dashboard', [
             'metrics' => [
@@ -23,8 +27,11 @@ class DashboardController extends Controller
                 'in_review' => (clone $tasks)->where('status', 'in_review')->count(),
                 'overdue' => (clone $open)->where('due_at', '<', now())->count(),
             ],
-            'upcomingTasks' => (clone $open)->orderByRaw('case when due_at is null then 1 else 0 end')->orderBy('due_at')->limit(8)->get(),
+            'taskResults' => $filtered->orderByRaw("case when status = 'completed' then 1 else 0 end")
+                ->orderByRaw('case when due_at is null then 1 else 0 end')->orderBy('due_at')->paginate(20)->withQueryString(),
             'openCases' => ImprovementCase::whereNotIn('status', ['closed', 'cancelled'])->count(),
+            'areas' => Area::where('is_active', true)->orderBy('name')->get(),
+            'users' => User::where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -42,5 +49,29 @@ class DashboardController extends Controller
                 $query->orWhere('area_id', $user->area_id);
             }
         });
+    }
+
+    private function applyFilters(Builder $query, Request $request): void
+    {
+        $query->when($request->filled('q'), function (Builder $query) use ($request): void {
+            $search = '%'.$request->string('q')->trim().'%';
+            $query->where(function (Builder $query) use ($search): void {
+                $query->where('title', 'ilike', $search)
+                    ->orWhere('description', 'ilike', $search)
+                    ->orWhereHas('improvementCase', fn (Builder $case) => $case
+                        ->where('code', 'ilike', $search)->orWhere('title', 'ilike', $search));
+            });
+        });
+        $query->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->string('status')));
+        $query->when($request->filled('area_id'), fn (Builder $query) => $query->where('area_id', $request->integer('area_id')));
+        $query->when($request->filled('assignee_id'), fn (Builder $query) => $query->where(function (Builder $query) use ($request): void {
+            $query->where('assigned_to', $request->integer('assignee_id'))
+                ->orWhereHas('assignees', fn (Builder $users) => $users->whereKey($request->integer('assignee_id')));
+        }));
+        $query->when($request->string('due')->toString() === 'overdue', fn (Builder $query) => $query
+            ->whereNotIn('status', ['completed', 'cancelled'])->where('due_at', '<', now()));
+        $query->when($request->string('due')->toString() === 'next_7_days', fn (Builder $query) => $query
+            ->whereNotIn('status', ['completed', 'cancelled'])->whereBetween('due_at', [now(), now()->addDays(7)]));
+        $query->when($request->string('due')->toString() === 'no_date', fn (Builder $query) => $query->whereNull('due_at'));
     }
 }
