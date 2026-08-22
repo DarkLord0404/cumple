@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Evidence extends Model
 {
+    protected $table = 'evidences';
+
     protected $fillable = ['task_id', 'uploaded_by', 'description', 'disk', 'path', 'original_name', 'mime_type', 'size'];
 
     public function task(): BelongsTo

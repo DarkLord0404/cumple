@@ -233,6 +233,17 @@ class ImprovementManagementTest extends TestCase
             ->assertDontSee('Tarea privada de otro responsable');
     }
 
+    public function test_user_can_open_an_opportunity_with_tasks_and_evidence_relation(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $task = $this->createTask($creator, $responsible, $case);
+
+        $this->actingAs($responsible)->get(route('cases.show', $case).'#task-'.$task->id)
+            ->assertOk()
+            ->assertSee($task->title)
+            ->assertSee('Seguimiento y evidencias');
+    }
+
     public function test_opportunity_portfolio_can_filter_by_type(): void
     {
         [$creator, $responsible, $correctiveCase] = $this->caseFixture();
