@@ -46,12 +46,16 @@ class ImprovementCaseController extends Controller
         $query->when($request->filled('assignee_id'), fn ($query) => $query->whereHas('tasks', fn ($tasks) => $tasks
             ->where('assigned_to', $request->integer('assignee_id'))
             ->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($request->integer('assignee_id')))));
+        $query->when($request->filled('service_area_id'), fn ($query) => $query->whereHas('tasks', fn ($tasks) => $tasks
+            ->whereHas('assignee', fn ($assignee) => $assignee->where('area_id', $request->integer('service_area_id')))
+            ->orWhereHas('assignees', fn ($assignees) => $assignees->where('area_id', $request->integer('service_area_id')))));
 
         return view('cases.index', [
             'cases' => $query->latest('reported_at')->paginate(20)->withQueryString(),
             'sources' => FindingSource::whereIn('id', (clone $availableValues)->distinct()->pluck('finding_source_id'))->orderBy('name')->get(),
             'areas' => Area::whereIn('id', (clone $availableValues)->distinct()->pluck('reporting_area_id'))->orderBy('name')->get(),
             'users' => User::whereIn('id', $assigneeIds)->orderBy('name')->get(),
+            'serviceAreas' => Area::whereIn('id', User::whereIn('id', $assigneeIds)->whereNotNull('area_id')->distinct()->pluck('area_id'))->orderBy('name')->get(),
             'actionTypes' => (clone $availableValues)->distinct()->pluck('action_type')->filter()->values(),
             'caseStatuses' => (clone $availableValues)->distinct()->pluck('status')->filter()->values(),
         ]);

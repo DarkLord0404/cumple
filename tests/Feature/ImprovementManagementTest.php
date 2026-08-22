@@ -324,9 +324,9 @@ class ImprovementManagementTest extends TestCase
             ->assertOk()
             ->assertDontSee('Área no utilizada')
             ->assertDontSee('Responsable sin tareas')
-            ->assertDontSee('Todos los estados')
-            ->assertDontSee('Todos los responsables')
-            ->assertDontSee('Todas las áreas')
+            ->assertSee('Todos los estados')
+            ->assertSee('Todos los responsables')
+            ->assertSee('Todas las áreas')
             ->assertDontSee('Vencidas');
     }
 
@@ -390,8 +390,9 @@ class ImprovementManagementTest extends TestCase
             ->assertDontSee('Fuente todavía no utilizada')
             ->assertDontSee('Área sin oportunidades')
             ->assertDontSee('Usuario sin acciones')
-            ->assertDontSee('Todos los tipos')
-            ->assertDontSee('Todos los estados');
+            ->assertSee('Todos los tipos')
+            ->assertSee('Todos los estados')
+            ->assertSee('Servicio del responsable');
     }
 
     private function caseFixture(bool $invima = false): array
