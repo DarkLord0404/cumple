@@ -25,6 +25,7 @@ class AdministrationCatalogTest extends TestCase
 
         $area = Area::where('slug', 'hospitalizacion')->firstOrFail();
         $this->assertSame($coordinator->id, $area->coordinator_id);
+        $this->assertSame($area->id, $coordinator->fresh()->area_id);
 
         $this->actingAs($administrator)->patch(route('areas.update', $area), [
             'name' => 'Hospitalización adultos',
@@ -68,5 +69,23 @@ class AdministrationCatalogTest extends TestCase
         $this->actingAs($user)->get(route('administration.catalogs'))->assertForbidden();
         $this->actingAs($user)->post(route('areas.store'), [])->assertForbidden();
         $this->actingAs($user)->post(route('sources.store'), [])->assertForbidden();
+    }
+
+    public function test_administrator_can_delete_an_unused_area(): void
+    {
+        $administrator = User::factory()->create(['role' => 'administrator']);
+        $coordinator = User::factory()->create(['role' => 'coordinator', 'is_active' => true]);
+        $area = Area::create([
+            'name' => 'Área temporal',
+            'slug' => 'area-temporal',
+            'coordinator_id' => $coordinator->id,
+        ]);
+        $coordinator->update(['area_id' => $area->id]);
+
+        $this->actingAs($administrator)->delete(route('areas.destroy', $area))
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('areas', ['id' => $area->id]);
+        $this->assertNull($coordinator->fresh()->area_id);
     }
 }

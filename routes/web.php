@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::get('administracion/catalogos', [AdministrationCatalogController::class, 'index'])->name('administration.catalogs');
     Route::post('administracion/areas', [AdministrationCatalogController::class, 'storeArea'])->name('areas.store');
     Route::patch('administracion/areas/{area}', [AdministrationCatalogController::class, 'updateArea'])->name('areas.update');
+    Route::delete('administracion/areas/{area}', [AdministrationCatalogController::class, 'destroyArea'])->name('areas.destroy');
     Route::post('administracion/fuentes', [AdministrationCatalogController::class, 'storeSource'])->name('sources.store');
     Route::patch('administracion/fuentes/{source}', [AdministrationCatalogController::class, 'updateSource'])->name('sources.update');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
