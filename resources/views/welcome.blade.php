@@ -12,7 +12,7 @@
         <div class="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-6 py-8 lg:px-10">
             <header class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400 font-black text-slate-950">C</div>
+                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10"><img src="{{ asset('img/clinica-isotipo.png') }}" alt="Clínica de Occidente" class="h-8 w-8 object-contain brightness-0 invert"></div>
                     <div><div class="text-lg font-bold tracking-[.2em]">CUMPLE</div><div class="text-xs text-slate-400">Gestión asistencial</div></div>
                 </div>
                 <a href="{{ route('login') }}" class="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold transition hover:border-emerald-300 hover:text-emerald-300">Ingresar</a>
@@ -37,7 +37,7 @@
                     @endforeach
                 </div>
             </section>
-            <footer class="text-xs text-slate-500">© {{ date('Y') }} Koqoi · Información institucional protegida</footer>
+            <footer class="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-slate-500"><span>© {{ date('Y') }} Koqoi · Información institucional protegida</span><img src="{{ asset('img/clinica-logo-horizontal.png') }}" alt="Clínica de Occidente" class="h-8 w-auto max-w-44 object-contain brightness-0 invert opacity-60"></footer>
         </div>
     </main>
 </body>

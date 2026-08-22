@@ -6,7 +6,7 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}">
-                        <span class="inline-flex items-center gap-2 font-black tracking-[.16em] text-slate-900"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400 text-slate-950">C</span>CUMPLE</span>
+                        <span class="inline-flex items-center gap-3 font-black tracking-[.16em] text-slate-900"><img src="{{ asset('img/clinica-isotipo.png') }}" alt="Clínica de Occidente" class="h-9 w-9 object-contain">CUMPLE</span>
                     </a>
                 </div>
 
