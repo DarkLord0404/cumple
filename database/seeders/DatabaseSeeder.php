@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Hospitalización', 'slug' => 'hospitalizacion'],
             ['name' => 'Urgencias', 'slug' => 'urgencias'],
             ['name' => 'Cirugía', 'slug' => 'cirugia'],
-            ['name' => 'Coordinación asistencial', 'slug' => 'coordinacion-asistencial'],
+            ['name' => 'Dirección Médica', 'slug' => 'direccion-medica'],
         ])->each(fn (array $area) => Area::query()->updateOrCreate(['slug' => $area['slug']], $area));
 
         collect([

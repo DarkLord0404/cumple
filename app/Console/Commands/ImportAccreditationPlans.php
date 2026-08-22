@@ -39,7 +39,7 @@ class ImportAccreditationPlans extends Command
             ['name' => 'Informe de acreditación – acreditación condicionada'],
             ['is_invima' => false, 'is_active' => true],
         );
-        $area = Area::where('slug', 'coordinacion-asistencial')->firstOrFail();
+        $area = Area::where('slug', 'direccion-medica')->firstOrFail();
         $administrator = User::where('role', 'administrator')->orderBy('id')->firstOrFail();
         $users = User::whereIn('name', $records->pluck('matched_users')->flatten()->unique())->get()->keyBy('name');
 
