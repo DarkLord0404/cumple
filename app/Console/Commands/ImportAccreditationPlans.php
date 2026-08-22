@@ -35,7 +35,10 @@ class ImportAccreditationPlans extends Command
             return self::SUCCESS;
         }
 
-        $source = FindingSource::where('name', 'Autoevaluación de acreditación RES 5095/2018')->firstOrFail();
+        $source = FindingSource::firstOrCreate(
+            ['name' => 'Informe de acreditación – acreditación condicionada'],
+            ['is_invima' => false, 'is_active' => true],
+        );
         $area = Area::where('slug', 'coordinacion-asistencial')->firstOrFail();
         $administrator = User::where('role', 'administrator')->orderBy('id')->firstOrFail();
         $users = User::whereIn('name', $records->pluck('matched_users')->flatten()->unique())->get()->keyBy('name');
