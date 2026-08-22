@@ -41,6 +41,7 @@ class ImportAccreditationPlans extends Command
         $users = User::whereIn('name', $records->pluck('matched_users')->flatten()->unique())->get()->keyBy('name');
 
         DB::transaction(function () use ($records, $source, $area, $administrator, $users): void {
+            $incomingTaskCodes = collect();
             foreach ($records->groupBy(fn ($row) => $row['source_file'].'|'.$row['opportunity_number']) as $group) {
                 $first = $group->first();
                 $macro = Str::before($first['macroarea'], ' ');
@@ -69,6 +70,7 @@ class ImportAccreditationPlans extends Command
                     $closed = Str::upper($record['status']) === 'CERRADA';
                     $inProgress = Str::contains(Str::upper($record['status']), 'IMPLEMENTACI');
                     $taskCode = "{$caseCode}-R{$record['row']}";
+                    $incomingTaskCodes->push($taskCode);
                     $assignees = collect($record['matched_users'])->map(fn ($name) => $users->get($name)?->id)->filter()->unique()->values();
                     throw_if($assignees->isEmpty(), RuntimeException::class, "Sin usuario válido para {$taskCode}");
                     $task = Task::updateOrCreate(['code' => $taskCode], [
@@ -90,6 +92,11 @@ class ImportAccreditationPlans extends Command
                     $task->assignees()->sync($assignees);
                 }
             }
+
+            Task::withTrashed()->where('code', 'like', 'ACR-%')->whereNotIn('code', $incomingTaskCodes)
+                ->get()->each->forceDelete();
+            ImprovementCase::withTrashed()->where('code', 'like', 'ACR-%')->whereDoesntHave('tasks')
+                ->get()->each->forceDelete();
         });
 
         $this->info('Importación de acreditación completada.');
