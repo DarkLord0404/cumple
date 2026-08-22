@@ -12,14 +12,14 @@ trait BelongsToOrganization
     protected static function bootBelongsToOrganization(): void
     {
         static::addGlobalScope('organization', function (Builder $builder): void {
-            $organizationId = Auth::user()?->organization_id;
+            $organizationId = Auth::hasUser() ? Auth::user()->organization_id : null;
             if ($organizationId) {
                 $builder->where($builder->qualifyColumn('organization_id'), $organizationId);
             }
         });
 
         static::creating(function ($model): void {
-            if (! $model->organization_id && Auth::user()?->organization_id) {
+            if (! $model->organization_id && Auth::hasUser() && Auth::user()->organization_id) {
                 $model->organization_id = Auth::user()->organization_id;
             }
         });
