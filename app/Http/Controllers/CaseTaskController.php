@@ -42,4 +42,34 @@ class CaseTaskController extends Controller
 
         return back()->with('status', 'Acción asignada correctamente.');
     }
+
+    public function update(Request $request, Task $task): RedirectResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', Rule::in(['pending', 'in_progress', 'in_review', 'completed', 'cancelled'])],
+            'progress' => ['required', 'integer', 'min:0', 'max:100'],
+            'review_notes' => ['nullable', 'string'],
+        ]);
+        if ($data['status'] === 'completed') {
+            $data['progress'] = 100;
+            $data['completed_at'] = now();
+        }
+        $task->update($data);
+
+        return back()->with('status', 'Seguimiento de la acción actualizado.');
+    }
+
+    public function storeEvidence(Request $request, Task $task): RedirectResponse
+    {
+        $data = $request->validate(['evidence' => ['required', 'file', 'max:25600'], 'description' => ['nullable', 'string', 'max:1000']]);
+        $file = $request->file('evidence');
+        $path = $file->store("evidence/{$task->id}");
+        $task->evidences()->create([
+            'uploaded_by' => $request->user()->id, 'description' => $data['description'] ?? null,
+            'disk' => 'local', 'path' => $path, 'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(), 'size' => $file->getSize(),
+        ]);
+
+        return back()->with('status', 'Evidencia adjuntada a la acción.');
+    }
 }

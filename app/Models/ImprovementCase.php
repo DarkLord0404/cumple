@@ -42,4 +42,9 @@ class ImprovementCase extends Model
     {
         return $this->hasMany(Task::class);
     }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(OfficialDocument::class);
+    }
 }

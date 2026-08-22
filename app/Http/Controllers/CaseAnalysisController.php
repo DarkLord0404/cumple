@@ -1,0 +1,59 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ImprovementCase;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+class CaseAnalysisController extends Controller
+{
+    public function updatePrioritization(Request $request, ImprovementCase $case): RedirectResponse
+    {
+        $data = $request->validate([
+            'urgency_score' => ['required', 'integer', 'min:0', 'max:10'],
+            'scope_score' => ['required', 'integer', 'min:0', 'max:10'],
+            'evolution_score' => ['required', 'integer', 'min:0', 'max:10'],
+            'analysis_method' => ['required', Rule::in(['five_whys', 'cause_effect'])],
+            'validation_notes' => ['nullable', 'string'],
+        ]);
+        $data['priority_score'] = $data['urgency_score'] + $data['scope_score'] + $data['evolution_score'];
+        if ($case->source->is_invima) {
+            $data['analysis_method'] = 'cause_effect';
+        }
+        $data += ['validated_by' => $request->user()->id, 'validated_at' => now(), 'status' => 'analysis'];
+        $case->update($data);
+
+        return back()->with('status', 'Priorización guardada. Se habilitó el análisis correspondiente.');
+    }
+
+    public function updateAnalysis(Request $request, ImprovementCase $case): RedirectResponse
+    {
+        abort_if(! $case->analysis_method, 422, 'Primero debe realizar la priorización.');
+        $rules = [
+            'immediate_correction' => ['nullable', 'string'],
+            'root_cause' => ['required', 'string'],
+        ];
+        if ($case->analysis_method === 'five_whys') {
+            $rules['whys'] = ['required', 'array', 'size:5'];
+            $rules['whys.*'] = ['required', 'string'];
+        } else {
+            $rules['cause_categories'] = ['required', 'array', 'min:1'];
+            $rules['cause_categories.*'] = ['string'];
+            $rules['cause_description'] = ['required', 'string'];
+        }
+        $data = $request->validate($rules);
+        $analysisData = $case->analysis_method === 'five_whys'
+            ? ['whys' => $data['whys']]
+            : ['categories' => $data['cause_categories'], 'description' => $data['cause_description']];
+        $case->update([
+            'immediate_correction' => $data['immediate_correction'] ?? null,
+            'root_cause' => $data['root_cause'],
+            'analysis_data' => $analysisData,
+            'status' => 'action_plan',
+        ]);
+
+        return back()->with('status', 'Análisis y causa raíz guardados.');
+    }
+}
