@@ -6,6 +6,7 @@ use App\Http\Controllers\CaseTaskController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EvidenceController;
 use App\Http\Controllers\ImprovementCaseController;
+use App\Http\Controllers\MeetingMinuteController;
 use App\Http\Controllers\OfficialDocumentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserManagementController;
@@ -19,6 +20,10 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verif
 
 Route::middleware('auth')->group(function () {
     Route::resource('hallazgos', ImprovementCaseController::class)->only(['index', 'create', 'store', 'show'])->parameters(['hallazgos' => 'case'])->names('cases');
+    Route::resource('actas', MeetingMinuteController::class)->only(['index', 'create', 'store', 'show'])->parameters(['actas' => 'minute'])->names('minutes');
+    Route::post('actas/{minute}/compromisos', [MeetingMinuteController::class, 'addCommitment'])->name('minutes.commitments.store');
+    Route::post('actas/{minute}/generar', [MeetingMinuteController::class, 'generate'])->name('minutes.generate');
+    Route::get('actas/{minute}/descargar', [MeetingMinuteController::class, 'download'])->name('minutes.download');
     Route::post('hallazgos/{case}/acciones', [CaseTaskController::class, 'store'])->name('cases.tasks.store');
     Route::patch('hallazgos/{case}/priorizacion', [CaseAnalysisController::class, 'updatePrioritization'])->name('cases.prioritization.update');
     Route::patch('hallazgos/{case}/analisis', [CaseAnalysisController::class, 'updateAnalysis'])->name('cases.analysis.update');

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Area;
 use App\Models\FindingSource;
 use App\Models\ImprovementCase;
+use App\Models\MeetingMinute;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -125,6 +126,30 @@ class ImprovementManagementTest extends TestCase
 
         $this->actingAs($responsible)->get(route('dashboard'))
             ->assertOk()->assertSee($assigned->title)->assertDontSee('Acción ajena');
+    }
+
+    public function test_minute_generates_an_institutional_word_copy(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $area = Area::create(['name' => 'Urgencias', 'slug' => 'urgencias']);
+        $minute = MeetingMinute::create([
+            'number' => '2026-001', 'title' => 'Revisión de caso', 'area_id' => $area->id,
+            'created_by' => $user->id, 'held_at' => now(), 'location' => 'Virtual',
+            'objective' => 'Revisar el caso', 'development' => 'Se analizó la situación.',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($user)->post(route('minutes.generate', $minute))->assertSessionHasNoErrors();
+        $minute->refresh();
+        $this->assertSame('ready', $minute->status);
+        Storage::disk('local')->assertExists($minute->generated_document_path);
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open(Storage::disk('local')->path($minute->generated_document_path)) === true);
+        $documentXml = $zip->getFromName('word/document.xml');
+        $zip->close();
+        $this->assertStringContainsString('Revisar el caso', $documentXml);
+        $this->assertStringNotContainsString('{{objetivo}}', $documentXml);
     }
 
     private function caseFixture(bool $invima = false): array

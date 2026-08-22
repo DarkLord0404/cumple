@@ -18,6 +18,7 @@
                     <x-nav-link :href="route('cases.index')" :active="request()->routeIs('cases.*')">
                         {{ __('Hallazgos y planes') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('minutes.index')" :active="request()->routeIs('minutes.*')">Actas</x-nav-link>
                     @if(Auth::user()->role === 'administrator')
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                             {{ __('Usuarios') }}
@@ -79,6 +80,7 @@
                 {{ __('Inicio') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('cases.index')" :active="request()->routeIs('cases.*')">Hallazgos y planes</x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('minutes.index')" :active="request()->routeIs('minutes.*')">Actas</x-responsive-nav-link>
             @if(Auth::user()->role === 'administrator')
                 <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">Usuarios</x-responsive-nav-link>
             @endif
