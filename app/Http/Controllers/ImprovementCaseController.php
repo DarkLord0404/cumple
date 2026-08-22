@@ -29,6 +29,7 @@ class ImprovementCaseController extends Controller
         }
         $availableCases = clone $query;
         $availableCaseIds = (clone $availableCases)->pluck('improvement_cases.id');
+        $availableValues = ImprovementCase::whereKey($availableCaseIds);
         $availableTasks = Task::whereIn('improvement_case_id', $availableCaseIds);
         $assigneeIds = (clone $availableTasks)->whereNotNull('assigned_to')->pluck('assigned_to')
             ->merge(DB::table('task_user')->whereIn('task_id', (clone $availableTasks)->pluck('id'))->pluck('user_id'))
@@ -48,11 +49,11 @@ class ImprovementCaseController extends Controller
 
         return view('cases.index', [
             'cases' => $query->latest('reported_at')->paginate(20)->withQueryString(),
-            'sources' => FindingSource::whereIn('id', (clone $availableCases)->distinct()->pluck('finding_source_id'))->orderBy('name')->get(),
-            'areas' => Area::whereIn('id', (clone $availableCases)->distinct()->pluck('reporting_area_id'))->orderBy('name')->get(),
+            'sources' => FindingSource::whereIn('id', (clone $availableValues)->distinct()->pluck('finding_source_id'))->orderBy('name')->get(),
+            'areas' => Area::whereIn('id', (clone $availableValues)->distinct()->pluck('reporting_area_id'))->orderBy('name')->get(),
             'users' => User::whereIn('id', $assigneeIds)->orderBy('name')->get(),
-            'actionTypes' => (clone $availableCases)->distinct()->pluck('action_type')->filter()->values(),
-            'caseStatuses' => (clone $availableCases)->distinct()->pluck('status')->filter()->values(),
+            'actionTypes' => (clone $availableValues)->distinct()->pluck('action_type')->filter()->values(),
+            'caseStatuses' => (clone $availableValues)->distinct()->pluck('status')->filter()->values(),
         ]);
     }
 
