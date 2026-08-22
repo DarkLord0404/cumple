@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Area;
 use App\Models\FindingSource;
 use App\Models\ImprovementCase;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\InstitutionalFindingSpreadsheet;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -25,6 +27,12 @@ class ImprovementCaseController extends Controller
             $query->whereHas('tasks', fn ($tasks) => $tasks->where('assigned_to', $user->id)
                 ->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->id)));
         }
+        $availableCases = clone $query;
+        $availableCaseIds = (clone $availableCases)->pluck('improvement_cases.id');
+        $availableTasks = Task::whereIn('improvement_case_id', $availableCaseIds);
+        $assigneeIds = (clone $availableTasks)->whereNotNull('assigned_to')->pluck('assigned_to')
+            ->merge(DB::table('task_user')->whereIn('task_id', (clone $availableTasks)->pluck('id'))->pluck('user_id'))
+            ->unique();
         $query->when($request->filled('q'), function ($query) use ($request): void {
             $search = '%'.$request->string('q')->trim().'%';
             $query->where(fn ($query) => $query->whereLike('code', $search, caseSensitive: false)
@@ -40,9 +48,11 @@ class ImprovementCaseController extends Controller
 
         return view('cases.index', [
             'cases' => $query->latest('reported_at')->paginate(20)->withQueryString(),
-            'sources' => FindingSource::where('is_active', true)->orderBy('name')->get(),
-            'areas' => Area::where('is_active', true)->orderBy('name')->get(),
-            'users' => User::where('is_active', true)->orderBy('name')->get(),
+            'sources' => FindingSource::whereIn('id', (clone $availableCases)->distinct()->pluck('finding_source_id'))->orderBy('name')->get(),
+            'areas' => Area::whereIn('id', (clone $availableCases)->distinct()->pluck('reporting_area_id'))->orderBy('name')->get(),
+            'users' => User::whereIn('id', $assigneeIds)->orderBy('name')->get(),
+            'actionTypes' => (clone $availableCases)->distinct()->pluck('action_type')->filter()->values(),
+            'caseStatuses' => (clone $availableCases)->distinct()->pluck('status')->filter()->values(),
         ]);
     }
 

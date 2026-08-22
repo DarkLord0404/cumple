@@ -340,6 +340,23 @@ class ImprovementManagementTest extends TestCase
             ->assertOk()->assertSee('Oportunidad visible')->assertDontSee('Hallazgo correctivo oculto');
     }
 
+    public function test_opportunity_filters_only_offer_values_present_in_the_portfolio(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $this->createTask($creator, $responsible, $case);
+        FindingSource::create(['name' => 'Fuente todavía no utilizada']);
+        Area::create(['name' => 'Área sin oportunidades', 'slug' => 'area-sin-oportunidades']);
+        User::factory()->create(['name' => 'Usuario sin acciones']);
+
+        $this->actingAs($responsible)->get(route('cases.index'))
+            ->assertOk()
+            ->assertDontSee('Fuente todavía no utilizada')
+            ->assertDontSee('Área sin oportunidades')
+            ->assertDontSee('Usuario sin acciones')
+            ->assertDontSee('Todos los tipos')
+            ->assertDontSee('Todos los estados');
+    }
+
     private function caseFixture(bool $invima = false): array
     {
         $creator = User::factory()->create();
