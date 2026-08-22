@@ -14,7 +14,7 @@
 </head>
 <body class="font-sans text-slate-900 antialiased">
     @php($isRegistration = request()->routeIs('register'))
-    <main class="grid {{ $isRegistration ? 'min-h-dvh' : 'h-dvh overflow-hidden' }} bg-slate-50 lg:grid-cols-[1.05fr_.95fr]">
+    <main class="grid h-dvh overflow-hidden bg-slate-50 lg:grid-cols-[1.05fr_.95fr]">
         <section class="relative hidden overflow-hidden bg-slate-950 p-9 text-white lg:flex lg:flex-col lg:justify-between xl:p-12">
             <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,_rgba(52,211,153,.22),_transparent_32%),radial-gradient(circle_at_90%_85%,_rgba(14,165,233,.18),_transparent_36%)]"></div>
             <img src="{{ asset('img/cumple-symbol.png') }}" alt="" class="absolute -bottom-28 -right-24 w-[34rem] opacity-[.07]">
@@ -34,15 +34,15 @@
             </div>
         </section>
 
-        <section class="flex items-center justify-center overflow-y-auto px-5 py-5 sm:px-10 sm:py-6">
+        <section class="flex min-h-0 items-center justify-center overflow-hidden px-4 py-3 sm:px-8">
             <div class="w-full max-w-md">
-                <div class="mb-5 flex items-center justify-between lg:hidden">
+                <div class="mb-2 flex items-center justify-between lg:hidden sm:mb-3">
                     <a href="{{ url('/') }}" class="flex items-center gap-3"><img src="{{ asset('img/cumple-symbol.png') }}" alt="" class="h-10 w-10 object-contain"><span><strong class="block tracking-[.18em]">CUMPLE</strong><small class="text-[9px] font-bold tracking-wide text-slate-400">POR KOQOI</small></span></a>
                 </div>
-                <div class="rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200 sm:p-8">
+                <div class="rounded-3xl bg-white {{ $isRegistration ? 'p-4 sm:p-5' : 'p-5 sm:p-7' }} shadow-xl shadow-slate-200/60 ring-1 ring-slate-200">
                     {{ $slot }}
                 </div>
-                <nav aria-label="Información legal" class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] font-semibold text-slate-500"><a href="{{ route('legal.privacy') }}" class="hover:text-emerald-700">Privacidad</a><a href="{{ route('legal.terms') }}" class="hover:text-emerald-700">Términos</a><a href="{{ route('legal.data-processing') }}" class="hover:text-emerald-700">Datos personales</a></nav>
+                <nav aria-label="Información legal" class="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] font-semibold text-slate-500 sm:text-[11px]"><a href="{{ route('legal.privacy') }}" class="hover:text-emerald-700">Privacidad</a><a href="{{ route('legal.terms') }}" class="hover:text-emerald-700">Términos</a><a href="{{ route('legal.data-processing') }}" class="hover:text-emerald-700">Datos personales</a></nav>
             </div>
         </section>
     </main>
