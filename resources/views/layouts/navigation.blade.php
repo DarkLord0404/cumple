@@ -6,7 +6,7 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}">
-                        <span class="inline-flex items-center gap-3 font-extrabold tracking-[.16em] text-slate-900"><img src="{{ asset('img/clinica-isotipo.png') }}" alt="Clínica de Occidente" class="h-9 w-9 object-contain">CUMPLE</span>
+                        <span class="inline-flex items-center gap-3 text-slate-900"><img src="{{ asset('img/cumple-symbol.png') }}" alt="" class="h-9 w-9 object-contain"><span><strong class="block text-sm tracking-[.16em]">CUMPLE</strong><small class="block text-[9px] font-semibold tracking-wide text-slate-400">POR KOQOI</small></span></span>
                     </a>
                 </div>
 

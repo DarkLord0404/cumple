@@ -3,7 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>CUMPLE</title>
+    <title>CUMPLE · por Koqoi</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -14,8 +17,8 @@
         <div class="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-6 py-8 lg:px-10">
             <header class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10"><img src="{{ asset('img/clinica-isotipo.png') }}" alt="Clínica de Occidente" class="h-8 w-8 object-contain brightness-0 invert"></div>
-                    <div><div class="text-lg font-bold tracking-[.2em]">CUMPLE</div><div class="text-xs text-slate-400">Gestión asistencial</div></div>
+                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10"><img src="{{ asset('img/cumple-symbol.png') }}" alt="" class="h-8 w-8 object-contain"></div>
+                    <div><div class="text-lg font-bold tracking-[.2em]">CUMPLE</div><div class="text-xs font-semibold tracking-wide text-slate-400">POR KOQOI</div></div>
                 </div>
                 <a href="{{ route('login') }}" class="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold transition hover:border-emerald-300 hover:text-emerald-300">Ingresar</a>
             </header>
@@ -39,7 +42,7 @@
                     @endforeach
                 </div>
             </section>
-            <footer class="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-slate-500"><span>© {{ date('Y') }} Koqoi · Información institucional protegida</span><img src="{{ asset('img/clinica-logo-horizontal.png') }}" alt="Clínica de Occidente" class="h-8 w-auto max-w-44 object-contain brightness-0 invert opacity-60"></footer>
+            <footer class="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-slate-500"><span>© {{ date('Y') }} Koqoi · Información protegida</span><span class="font-bold tracking-[.18em] text-slate-400">CUMPLE POR KOQOI</span></footer>
         </div>
     </main>
 </body>
