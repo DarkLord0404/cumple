@@ -225,6 +225,17 @@ class ImprovementManagementTest extends TestCase
             ->assertOk()->assertSee($assigned->title)->assertDontSee('Acción ajena');
     }
 
+    public function test_administrator_dashboard_shows_all_organization_actions(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $administrator = User::factory()->create(['role' => 'administrator']);
+        $task = $this->createTask($creator, $responsible, $case, 'Acción visible para administración');
+
+        $this->actingAs($administrator)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee($task->title);
+    }
+
     public function test_minute_generates_an_institutional_word_copy(): void
     {
         Storage::fake('local');
