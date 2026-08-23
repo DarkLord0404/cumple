@@ -25,6 +25,7 @@ class ReparseKairoMinutes extends Command
                 'objective' => $parsed['objective'], 'agenda' => $parsed['agenda'],
                 'development' => $parsed['development'], 'decisions' => $parsed['decisions'],
                 'external_payload' => $payload + ['parsed_commitments' => $parsed['commitments']],
+                'status' => 'draft',
             ])->save();
             $updated++;
         });
