@@ -9,6 +9,7 @@ use App\Http\Controllers\EvidenceController;
 use App\Http\Controllers\ImprovementCaseController;
 use App\Http\Controllers\MeetingMinuteController;
 use App\Http\Controllers\MinuteTaskBulkController;
+use App\Http\Controllers\MinuteProposalBulkController;
 use App\Http\Controllers\MinuteTemplateController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfficialDocumentController;
@@ -32,6 +33,8 @@ Route::middleware('auth')->group(function () {
     Route::post('actas/{minute}/compromisos', [MeetingMinuteController::class, 'addCommitment'])->name('minutes.commitments.store');
     Route::post('actas/{minute}/propuestas/{proposal}/convertir', [MeetingMinuteController::class, 'convertProposal'])->name('minutes.proposals.convert');
     Route::patch('actas/{minute}/propuestas/{proposal}/descartar', [MeetingMinuteController::class, 'dismissProposal'])->name('minutes.proposals.dismiss');
+    Route::get('actas/{minute}/propuestas/edicion-masiva', [MinuteProposalBulkController::class, 'edit'])->name('minutes.proposals.bulk.edit');
+    Route::post('actas/{minute}/propuestas/edicion-masiva', [MinuteProposalBulkController::class, 'process'])->name('minutes.proposals.bulk.process');
     Route::get('actas/{minute}/tareas/edicion-masiva', [MinuteTaskBulkController::class, 'edit'])->name('minutes.tasks.bulk.edit');
     Route::put('actas/{minute}/tareas/edicion-masiva', [MinuteTaskBulkController::class, 'updateAll'])->name('minutes.tasks.bulk.update');
     Route::patch('actas/{minute}/tareas/acciones-masivas', [MinuteTaskBulkController::class, 'applyBulk'])->name('minutes.tasks.bulk.apply');

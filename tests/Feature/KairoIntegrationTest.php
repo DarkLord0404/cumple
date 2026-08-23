@@ -108,13 +108,13 @@ MD,
             'suggested_responsible' => $responsible->name, 'status' => 'pending',
         ]);
 
-        $payload = [
+        $payload = ['action' => 'convert', 'selected' => [$proposal->id], 'proposals' => [$proposal->id => [
             'title' => 'Actualizar y socializar protocolo', 'assignee_type' => 'internal',
             'assignee_ids' => [$responsible->id], 'due_at' => now()->addWeek()->toDateString(),
-            'area_id' => $area->id,
-            'expected_result' => 'Protocolo actualizado y registro de socialización.',
-        ];
-        $this->actingAs($admin)->post(route('minutes.proposals.convert', [$minute, $proposal]), $payload)
+            'area_id' => $area->id, 'expected_result' => 'Protocolo actualizado y registro de socialización.',
+        ]]];
+        $this->actingAs($admin)->get(route('minutes.proposals.bulk.edit', $minute))->assertOk()->assertSee('Actualizar protocolo');
+        $this->actingAs($admin)->post(route('minutes.proposals.bulk.process', $minute), $payload)
             ->assertRedirect()->assertSessionHasNoErrors();
 
         $task = Task::firstOrFail();
@@ -124,8 +124,7 @@ MD,
         $this->assertSame($task->id, $proposal->fresh()->task_id);
         $this->assertSame('Nueva tarea asignada', $responsible->fresh()->unreadNotifications->first()?->data['title']);
 
-        $this->actingAs($admin)->post(route('minutes.proposals.convert', [$minute, $proposal]), $payload)
-            ->assertStatus(422);
+        $this->actingAs($admin)->post(route('minutes.proposals.bulk.process', $minute), $payload)->assertNotFound();
         $this->assertSame(1, Task::count());
     }
 
