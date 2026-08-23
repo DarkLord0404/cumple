@@ -1,0 +1,8 @@
+<x-app-layout>
+    <x-slot name="header"><div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-sm font-semibold text-emerald-700">Configuración</p><h2 class="mt-1 text-2xl font-bold text-slate-900">Organización</h2></div><a href="{{ route('administration.catalogs') }}" class="text-sm font-bold text-slate-600 hover:text-emerald-700">← Volver a configuración</a></div></x-slot>
+    <div class="py-8"><div class="mx-auto max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
+        @if(session('status'))<div class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">{{ session('status') }}</div>@endif
+        @if($errors->any())<div class="rounded-xl bg-rose-50 p-4 text-sm text-rose-800 ring-1 ring-rose-200">{{ $errors->first() }}</div>@endif
+        <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7"><div class="max-w-2xl"><p class="text-sm font-semibold text-emerald-700">Identidad del tenant</p><h3 class="mt-1 text-xl font-bold text-slate-900">Nombre de la organización</h3><p class="mt-2 text-sm leading-6 text-slate-500">Este nombre se muestra a todos los usuarios en el menú principal. El identificador técnico permanece protegido.</p><form method="POST" action="{{ route('organization.update') }}" class="mt-6 space-y-4">@csrf @method('PATCH')<div><x-input-label for="organization_name" value="Nombre visible"/><input id="organization_name" name="name" value="{{ old('name', $organization?->name) }}" maxlength="255" class="mt-1 block w-full rounded-xl border-slate-300" required></div><x-primary-button>Guardar nombre</x-primary-button></form></div></section>
+    </div></div>
+</x-app-layout>

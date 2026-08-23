@@ -50,6 +50,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('usuarios/{user}', [UserManagementController::class, 'update'])->name('users.update');
     Route::patch('usuarios/{user}/contrasena', [UserManagementController::class, 'resetPassword'])->name('users.password.update');
     Route::get('administracion/catalogos', [AdministrationCatalogController::class, 'index'])->name('administration.catalogs');
+    Route::get('administracion/organizacion', [AdministrationCatalogController::class, 'organization'])->name('administration.organization');
+    Route::get('administracion/areas', [AdministrationCatalogController::class, 'areas'])->name('administration.areas');
+    Route::get('administracion/fuentes', [AdministrationCatalogController::class, 'sources'])->name('administration.sources');
     Route::patch('administracion/organizacion', [AdministrationCatalogController::class, 'updateOrganization'])->name('organization.update');
     Route::post('administracion/areas', [AdministrationCatalogController::class, 'storeArea'])->name('areas.store');
     Route::patch('administracion/areas/{area}', [AdministrationCatalogController::class, 'updateArea'])->name('areas.update');

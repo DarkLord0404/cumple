@@ -18,11 +18,38 @@ class AdministrationCatalogController extends Controller
     {
         $this->authorizeAdministrator($request);
 
-        return view('administration.catalogs', [
+        return view('administration.index', [
             'organization' => $request->user()->organization,
+            'areaCount' => Area::count(),
+            'sourceCount' => FindingSource::count(),
+        ]);
+    }
+
+    public function organization(Request $request): View
+    {
+        $this->authorizeAdministrator($request);
+
+        return view('administration.organization', [
+            'organization' => $request->user()->organization,
+        ]);
+    }
+
+    public function areas(Request $request): View
+    {
+        $this->authorizeAdministrator($request);
+
+        return view('administration.areas', [
             'areas' => Area::with(['coordinator'])->orderBy('name')->get(),
-            'sources' => FindingSource::orderBy('name')->get(),
             'coordinators' => User::with('area')->where('is_active', true)->whereIn('role', User::COORDINATOR_ROLES)->orderBy('name')->get(),
+        ]);
+    }
+
+    public function sources(Request $request): View
+    {
+        $this->authorizeAdministrator($request);
+
+        return view('administration.sources', [
+            'sources' => FindingSource::orderBy('name')->get(),
         ]);
     }
 

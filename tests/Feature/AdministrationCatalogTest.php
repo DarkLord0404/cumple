@@ -85,8 +85,30 @@ class AdministrationCatalogTest extends TestCase
         $user = User::factory()->create(['role' => 'collaborator']);
 
         $this->actingAs($user)->get(route('administration.catalogs'))->assertForbidden();
+        $this->actingAs($user)->get(route('administration.organization'))->assertForbidden();
+        $this->actingAs($user)->get(route('administration.areas'))->assertForbidden();
+        $this->actingAs($user)->get(route('administration.sources'))->assertForbidden();
         $this->actingAs($user)->post(route('areas.store'), [])->assertForbidden();
         $this->actingAs($user)->post(route('sources.store'), [])->assertForbidden();
+    }
+
+    public function test_configuration_hub_links_to_independent_sections(): void
+    {
+        $organization = Organization::create([
+            'name' => 'Organización modular', 'slug' => 'organizacion-modular', 'is_active' => true,
+        ]);
+        $administrator = User::factory()->create([
+            'organization_id' => $organization->id, 'role' => 'administrator',
+        ]);
+
+        $this->actingAs($administrator)->get(route('administration.catalogs'))
+            ->assertOk()
+            ->assertSee(route('administration.organization'))
+            ->assertSee(route('administration.areas'))
+            ->assertSee(route('administration.sources'));
+        $this->actingAs($administrator)->get(route('administration.organization'))->assertOk()->assertSee('Organización modular');
+        $this->actingAs($administrator)->get(route('administration.areas'))->assertOk()->assertSee('Nueva área o servicio');
+        $this->actingAs($administrator)->get(route('administration.sources'))->assertOk()->assertSee('Nueva fuente');
     }
 
     public function test_administrator_can_delete_an_unused_area(): void
