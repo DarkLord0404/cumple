@@ -53,6 +53,31 @@ class AdministrationCatalogController extends Controller
         ]);
     }
 
+    public function reminders(Request $request): View
+    {
+        $this->authorizeAdministrator($request);
+
+        return view('administration.reminders', [
+            'organization' => $request->user()->organization,
+        ]);
+    }
+
+    public function updateReminders(Request $request): RedirectResponse
+    {
+        $this->authorizeAdministrator($request);
+        $data = $request->validate([
+            'reminders_enabled' => ['required', 'boolean'],
+            'reminder_days' => ['nullable', 'array'],
+            'reminder_days.*' => ['integer', Rule::in([1, 3, 7, 14, 30])],
+            'overdue_alerts_enabled' => ['required', 'boolean'],
+            'review_alerts_enabled' => ['required', 'boolean'],
+        ]);
+        $data['reminder_days'] = collect($data['reminder_days'] ?? [7, 3, 1])->map(fn ($day) => (int) $day)->unique()->sortDesc()->values()->all();
+        $request->user()->organization()->update($data);
+
+        return back()->with('status', 'Recordatorios y alertas actualizados.');
+    }
+
     public function updateOrganization(Request $request): RedirectResponse
     {
         $this->authorizeAdministrator($request);

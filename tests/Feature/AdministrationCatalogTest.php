@@ -109,6 +109,25 @@ class AdministrationCatalogTest extends TestCase
         $this->actingAs($administrator)->get(route('administration.organization'))->assertOk()->assertSee('Organización modular');
         $this->actingAs($administrator)->get(route('administration.areas'))->assertOk()->assertSee('Crear área o servicio');
         $this->actingAs($administrator)->get(route('administration.sources'))->assertOk()->assertSee('Nueva fuente');
+        $this->actingAs($administrator)->get(route('administration.reminders'))->assertOk()->assertSee('Recordatorios y alertas');
+    }
+
+    public function test_administrator_can_configure_reminders_for_their_organization(): void
+    {
+        $organization = Organization::create([
+            'name' => 'Organización', 'slug' => 'organizacion-alertas', 'is_active' => true,
+        ]);
+        $administrator = User::factory()->create(['organization_id' => $organization->id, 'role' => 'administrator']);
+
+        $this->actingAs($administrator)->patch(route('reminders.update'), [
+            'reminders_enabled' => 1, 'reminder_days' => [14, 3, 1],
+            'overdue_alerts_enabled' => 1, 'review_alerts_enabled' => 0,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $organization->refresh();
+        $this->assertSame([14, 3, 1], $organization->reminder_days);
+        $this->assertTrue($organization->overdue_alerts_enabled);
+        $this->assertFalse($organization->review_alerts_enabled);
     }
 
     public function test_administrator_can_delete_an_unused_area(): void

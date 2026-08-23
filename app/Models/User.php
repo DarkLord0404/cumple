@@ -7,6 +7,7 @@ use App\Models\Concerns\BelongsToOrganization;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -51,6 +52,11 @@ class User extends Authenticatable
     public function organization()
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    public function coordinatedAreas(): HasMany
+    {
+        return $this->hasMany(Area::class, 'coordinator_id');
     }
 
     public function isCoordinator(): bool
