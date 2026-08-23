@@ -3,6 +3,9 @@
     <div class="py-8"><div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
         @if(session('status'))<div class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">{{ session('status') }}</div>@endif
         @if($errors->any())<div class="rounded-xl bg-rose-50 p-4 text-sm text-rose-800 ring-1 ring-rose-200">{{ $errors->first() }}</div>@endif
+        <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <div class="grid items-end gap-5 lg:grid-cols-[1fr_1.4fr]"><div><p class="text-sm font-semibold text-emerald-700">Espacio de trabajo</p><h3 class="mt-1 text-lg font-bold text-slate-900">Nombre de la organización</h3><p class="mt-1 text-sm leading-6 text-slate-500">Este nombre identifica el tenant y se muestra a sus usuarios en el menú principal.</p></div><form method="POST" action="{{ route('organization.update') }}" class="flex flex-col gap-3 sm:flex-row sm:items-end">@csrf @method('PATCH')<div class="min-w-0 flex-1"><x-input-label for="organization_name" value="Nombre visible"/><input id="organization_name" name="name" value="{{ old('name', $organization?->name) }}" maxlength="255" class="mt-1 block w-full rounded-xl border-slate-300" required></div><x-primary-button class="justify-center sm:mb-0.5">Guardar nombre</x-primary-button></form></div>
+        </section>
         <div class="grid items-start gap-6 lg:grid-cols-2">
             <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200" x-data="{ editing: null }">
                 <div class="flex items-start justify-between gap-4"><div><h3 class="text-lg font-bold">Áreas y servicios</h3><p class="mt-1 text-sm text-slate-500">Crea las áreas y asigna aquí mismo su coordinador responsable.</p></div><span class="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{{ $areas->count() }} áreas</span></div>

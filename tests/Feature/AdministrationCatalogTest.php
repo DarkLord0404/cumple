@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Area;
 use App\Models\FindingSource;
+use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -11,6 +12,23 @@ use Tests\TestCase;
 class AdministrationCatalogTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_administrator_can_update_their_organization_name(): void
+    {
+        $organization = Organization::create([
+            'name' => 'Nombre anterior', 'slug' => 'nombre-anterior', 'is_active' => true,
+        ]);
+        $administrator = User::factory()->create([
+            'organization_id' => $organization->id, 'role' => 'administrator',
+        ]);
+
+        $this->actingAs($administrator)->patch(route('organization.update'), [
+            'name' => '  Nueva Organización Principal  ',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('Nueva Organización Principal', $organization->fresh()->name);
+        $this->assertSame('nombre-anterior', $organization->fresh()->slug);
+    }
 
     public function test_administrator_can_manage_areas_and_assign_a_coordinator(): void
     {

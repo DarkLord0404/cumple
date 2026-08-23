@@ -19,10 +19,27 @@ class AdministrationCatalogController extends Controller
         $this->authorizeAdministrator($request);
 
         return view('administration.catalogs', [
+            'organization' => $request->user()->organization,
             'areas' => Area::with(['coordinator'])->orderBy('name')->get(),
             'sources' => FindingSource::orderBy('name')->get(),
             'coordinators' => User::with('area')->where('is_active', true)->whereIn('role', User::COORDINATOR_ROLES)->orderBy('name')->get(),
         ]);
+    }
+
+    public function updateOrganization(Request $request): RedirectResponse
+    {
+        $this->authorizeAdministrator($request);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ], [
+            'name.required' => 'Escribe el nombre de la organización.',
+        ]);
+
+        $request->user()->organization()->update([
+            'name' => Str::squish($data['name']),
+        ]);
+
+        return back()->with('status', 'Nombre de la organización actualizado.');
     }
 
     public function storeArea(Request $request): RedirectResponse
