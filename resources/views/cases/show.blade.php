@@ -15,7 +15,7 @@
                     <div class="sm:col-span-2"><x-input-label for="file" value="Adjuntar Word, Excel o PDF"/><input id="file" name="file" type="file" accept=".xlsx,.xls,.docx,.doc,.pdf" class="mt-1 block w-full text-sm" required></div>
                     <select name="document_stage" class="rounded-xl border-slate-300 text-sm"><option value="original">Original recibido</option><option value="working">Copia de trabajo</option><option value="final">Versión preparada para enviar</option></select>
                     <select name="document_type" class="rounded-xl border-slate-300 text-sm"><option value="finding_report">Reporte y plan de acción</option><option value="nonconformity">No conforme</option><option value="minutes">Acta</option><option value="other">Otro</option></select>
-                    <div class="sm:col-span-2 flex justify-end"><x-secondary-button>Guardar documento</x-secondary-button></div>
+                    <div class="sm:col-span-2 flex justify-end"><x-secondary-button type="submit">Guardar documento</x-secondary-button></div>
                 </form>
             </section>
             <section class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><h3 class="text-lg font-bold">Priorización y validación</h3><p class="mt-1 text-sm text-slate-500">Solo se habilitará un método de análisis. INVIMA utiliza siempre causa–efecto.</p>
@@ -23,7 +23,7 @@
                     @foreach(['urgency_score'=>'Urgencia','scope_score'=>'Alcance','evolution_score'=>'Evolución'] as $field=>$label)<div><x-input-label :for="$field" :value="$label"/><input id="{{ $field }}" name="{{ $field }}" type="number" min="0" max="10" value="{{ old($field,$case->$field) }}" class="mt-1 block w-full rounded-xl border-slate-300" required></div>@endforeach
                     <div class="sm:col-span-3"><x-input-label for="analysis_method" value="Método indicado por la priorización"/><select id="analysis_method" name="analysis_method" class="mt-1 block w-full rounded-xl border-slate-300" {{ $case->source->is_invima ? 'disabled' : '' }}><option value="five_whys" @selected($case->analysis_method==='five_whys')>Cinco por qué</option><option value="cause_effect" @selected($case->analysis_method==='cause_effect')>Causa–efecto</option></select>@if($case->source->is_invima)<input type="hidden" name="analysis_method" value="cause_effect"><p class="mt-1 text-xs font-semibold text-emerald-700">Asignado automáticamente por ser fuente INVIMA.</p>@endif</div>
                     <div class="sm:col-span-3"><x-input-label for="validation_notes" value="Observaciones de validación"/><textarea id="validation_notes" name="validation_notes" rows="2" class="mt-1 block w-full rounded-xl border-slate-300">{{ old('validation_notes',$case->validation_notes) }}</textarea></div>
-                    <div class="sm:col-span-3 flex items-center justify-between"><p class="text-sm text-slate-600">Puntaje: <strong>{{ $case->priority_score ?? 'Pendiente' }}</strong></p><x-secondary-button>Guardar priorización</x-secondary-button></div>
+                    <div class="sm:col-span-3 flex items-center justify-between"><p class="text-sm text-slate-600">Puntaje: <strong>{{ $case->priority_score ?? 'Pendiente' }}</strong></p><x-secondary-button type="submit">Guardar priorización</x-secondary-button></div>
                 </form>
             </section>
         </div>@endunless

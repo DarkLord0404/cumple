@@ -20,6 +20,14 @@ class ImprovementManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_excel_import_button_submits_the_selected_file(): void
+    {
+        $user = User::factory()->create();
+        $response = $this->actingAs($user)->get(route('cases.create'));
+
+        $response->assertOk()->assertSee('type="submit"', false)->assertSeeText('Leer Excel');
+    }
+
     public function test_authenticated_user_can_create_a_finding(): void
     {
         $user = User::factory()->create();
