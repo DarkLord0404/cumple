@@ -11,13 +11,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MeetingMinute extends Model
 {
-    protected $fillable = ['number', 'title', 'meeting_type', 'organizer', 'area_id', 'created_by', 'held_at', 'location', 'external_participants', 'objective', 'agenda', 'development', 'decisions', 'status', 'approved_at', 'source_system', 'external_reference', 'source_document_path', 'generated_document_path'];
+    protected $fillable = ['organization_id', 'number', 'title', 'meeting_type', 'organizer', 'area_id', 'created_by', 'held_at', 'location', 'external_participants', 'objective', 'agenda', 'development', 'decisions', 'status', 'approved_at', 'source_system', 'external_reference', 'external_payload', 'source_document_path', 'generated_document_path'];
 
     use BelongsToOrganization, SoftDeletes;
 
     protected function casts(): array
     {
-        return ['held_at' => 'datetime', 'approved_at' => 'datetime', 'external_participants' => 'array'];
+        return ['held_at' => 'datetime', 'approved_at' => 'datetime', 'external_participants' => 'array', 'external_payload' => 'array'];
     }
 
     public function area(): BelongsTo
