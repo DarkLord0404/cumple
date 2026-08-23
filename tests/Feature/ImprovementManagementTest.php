@@ -113,6 +113,48 @@ class ImprovementManagementTest extends TestCase
         $this->assertSame('Acción cerrada', $quality->fresh()->unreadNotifications->first()?->data['title']);
     }
 
+    public function test_rejected_action_returns_to_ninety_percent_and_notifies_assignees_with_reason(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $quality = User::factory()->create(['role' => 'quality']);
+        $task = $this->createTask($creator, $responsible, $case);
+        $task->assignees()->sync([$responsible->id]);
+        $task->update(['status' => 'in_review', 'progress' => 100, 'submitted_at' => now()]);
+
+        $this->actingAs($quality)->patch(route('tasks.review', $task), [
+            'decision' => 'reject',
+            'review_notes' => 'El soporte no permite verificar el cumplimiento.',
+        ])->assertSessionHasNoErrors();
+
+        $task->refresh();
+        $notification = $responsible->fresh()->unreadNotifications->firstOrFail();
+        $this->assertSame('in_progress', $task->status);
+        $this->assertSame(90, $task->progress);
+        $this->assertSame('Acción devuelta para ajustes', $notification->data['title']);
+        $this->assertSame('El soporte no permite verificar el cumplimiento.', $notification->data['reason']);
+    }
+
+    public function test_rejection_requires_a_reason_and_submission_forces_one_hundred_percent(): void
+    {
+        Storage::fake('local');
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $quality = User::factory()->create(['role' => 'quality']);
+        $task = $this->createTask($creator, $responsible, $case);
+        $this->actingAs($responsible)->post(route('tasks.evidence.store', $task), [
+            'evidence' => UploadedFile::fake()->create('soporte.pdf', 20, 'application/pdf'),
+        ]);
+
+        $this->actingAs($responsible)->patch(route('tasks.update', $task), [
+            'status' => 'in_review', 'progress' => 35,
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(100, $task->fresh()->progress);
+
+        $this->actingAs($quality)->patch(route('tasks.review', $task), [
+            'decision' => 'reject', 'review_notes' => '',
+        ])->assertSessionHasErrors('review_notes');
+        $this->assertSame('in_review', $task->fresh()->status);
+    }
+
     public function test_user_can_open_and_mark_their_notification_as_read(): void
     {
         [$creator, $responsible, $case] = $this->caseFixture();

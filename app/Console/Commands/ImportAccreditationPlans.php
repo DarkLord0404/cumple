@@ -99,7 +99,7 @@ class ImportAccreditationPlans extends Command
                         'created_by' => $administrator->id,
                         'priority' => 'high',
                         'status' => $closed ? 'completed' : ($inProgress ? 'in_progress' : 'pending'),
-                        'progress' => $closed ? 100 : ($inProgress ? 50 : 0),
+                        'progress' => $closed ? 100 : 0,
                         'due_at' => $dueAt,
                         'started_at' => $inProgress ? now() : null,
                         'completed_at' => $closed ? ($dueAt ?? now()) : null,

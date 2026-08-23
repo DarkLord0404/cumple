@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
 use App\Notifications\TaskCompletedNotification;
+use App\Notifications\TaskRejectedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
@@ -83,6 +84,7 @@ class CaseTaskController extends Controller
         ]);
         if ($data['status'] === 'in_review') {
             abort_if($task->evidences()->doesntExist(), 422, 'Adjunta al menos una evidencia antes de enviar la acción a revisión.');
+            $data['progress'] = 100;
             $data['submitted_at'] = now();
         } else {
             $data += [
@@ -115,6 +117,7 @@ class CaseTaskController extends Controller
         if ($data['decision'] === 'reject') {
             $task->update([
                 'status' => 'in_progress',
+                'progress' => 90,
                 'reviewed_by' => $user->id,
                 'review_notes' => $data['review_notes'],
                 'submitted_at' => null,
@@ -124,8 +127,13 @@ class CaseTaskController extends Controller
                 'medical_approved_by' => null,
                 'medical_approved_at' => null,
             ]);
+            $assigneeIds = $task->assignees()->pluck('users.id')->push($task->assigned_to)->filter()->unique();
+            Notification::send(
+                User::whereIn('id', $assigneeIds)->get(),
+                new TaskRejectedNotification($task, $user, $data['review_notes']),
+            );
 
-            return back()->with('status', 'La acción fue devuelta al responsable con observaciones.');
+            return back()->with('status', 'La acción volvió al 90 % y se notificó la causal a sus responsables.');
         }
 
         $approval = $isQuality
