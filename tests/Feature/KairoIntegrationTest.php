@@ -156,4 +156,48 @@ MD,
     {
         $this->withToken(str_repeat('x', 80))->postJson('/api/integrations/kairo/meetings', [])->assertUnauthorized();
     }
+
+    public function test_minute_tasks_can_be_edited_updated_and_deleted_in_bulk(): void
+    {
+        $organization = Organization::create(['name' => 'Organización', 'slug' => 'masivo', 'is_active' => true]);
+        $admin = User::factory()->create(['organization_id' => $organization->id, 'role' => 'administrator']);
+        $responsible = User::factory()->create(['organization_id' => $organization->id, 'is_active' => true]);
+        $areaA = \App\Models\Area::withoutGlobalScopes()->create(['organization_id' => $organization->id, 'name' => 'Área A', 'slug' => 'area-a-masiva', 'is_active' => true]);
+        $areaB = \App\Models\Area::withoutGlobalScopes()->create(['organization_id' => $organization->id, 'name' => 'Área B', 'slug' => 'area-b-masiva', 'is_active' => true]);
+        $minute = MeetingMinute::withoutGlobalScopes()->create([
+            'organization_id' => $organization->id, 'number' => 'ACTA-MASA', 'title' => 'Acta masiva',
+            'created_by' => $admin->id, 'held_at' => now(), 'status' => 'draft',
+        ]);
+        $tasks = collect(['Primera tarea', 'Segunda tarea'])->map(fn ($title, $index) => Task::withoutGlobalScopes()->forceCreate([
+            'organization_id' => $organization->id, 'code' => 'MASA-'.($index + 1), 'title' => $title,
+            'area_id' => $areaA->id, 'meeting_minute_id' => $minute->id, 'created_by' => $admin->id,
+            'assigned_to' => $responsible->id, 'assignee_type' => 'internal', 'priority' => 'medium',
+            'status' => 'pending', 'due_at' => now()->addWeek(),
+        ]));
+        $tasks->each(fn (Task $task) => $task->assignees()->sync([$responsible->id]));
+
+        $this->actingAs($admin)->get(route('minutes.tasks.bulk.edit', $minute))
+            ->assertOk()->assertSee('Primera tarea')->assertSee('Segunda tarea');
+
+        $updatePayload = ['tasks' => $tasks->mapWithKeys(fn (Task $task, $index) => [$task->id => [
+            'title' => 'Tarea ajustada '.($index + 1), 'area_id' => $areaA->id,
+            'due_at' => now()->addDays(10)->toDateString(), 'expected_result' => 'Evidencia '.$index,
+            'assignee_type' => 'internal', 'assignee_ids' => [$responsible->id],
+        ]])->all()];
+        $this->actingAs($admin)->put(route('minutes.tasks.bulk.update', $minute), $updatePayload)
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('Tarea ajustada 1', $tasks[0]->fresh()->title);
+
+        $this->actingAs($admin)->patch(route('minutes.tasks.bulk.apply', $minute), [
+            'task_ids' => $tasks->pluck('id')->all(), 'bulk_action' => 'update', 'area_id' => $areaB->id,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame($areaB->id, $tasks[0]->fresh()->area_id);
+        $this->assertSame($areaB->id, $tasks[1]->fresh()->area_id);
+
+        $this->actingAs($admin)->patch(route('minutes.tasks.bulk.apply', $minute), [
+            'task_ids' => [$tasks[0]->id], 'bulk_action' => 'delete',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSoftDeleted('tasks', ['id' => $tasks[0]->id]);
+        $this->assertDatabaseHas('tasks', ['id' => $tasks[1]->id, 'deleted_at' => null]);
+    }
 }
