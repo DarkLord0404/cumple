@@ -111,6 +111,23 @@ class ImprovementManagementTest extends TestCase
         $this->assertSame('El documento no definía el responsable.', $causes[1]['description']);
     }
 
+    public function test_prioritization_automatically_selects_the_analysis_method(): void
+    {
+        [$creator, , $case] = $this->caseFixture();
+
+        $this->actingAs($creator)->patch(route('cases.prioritization.update', $case), [
+            'urgency_score' => 2, 'scope_score' => 2, 'evolution_score' => 1,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(5, $case->fresh()->priority_score);
+        $this->assertSame('cause_effect', $case->fresh()->analysis_method);
+
+        $this->actingAs($creator)->patch(route('cases.prioritization.update', $case), [
+            'urgency_score' => 1, 'scope_score' => 1, 'evolution_score' => 2,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(4, $case->fresh()->priority_score);
+        $this->assertSame('five_whys', $case->fresh()->analysis_method);
+    }
+
     public function test_task_responsibility_can_change_from_internal_users_to_external_person(): void
     {
         [$creator, $responsible, $case] = $this->caseFixture();

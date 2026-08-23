@@ -26,13 +26,12 @@ class CaseAnalysisController extends Controller
             'urgency_score' => ['required', 'integer', 'min:0', 'max:10'],
             'scope_score' => ['required', 'integer', 'min:0', 'max:10'],
             'evolution_score' => ['required', 'integer', 'min:0', 'max:10'],
-            'analysis_method' => ['required', Rule::in(['five_whys', 'cause_effect'])],
             'validation_notes' => ['nullable', 'string'],
         ]);
         $data['priority_score'] = $data['urgency_score'] + $data['scope_score'] + $data['evolution_score'];
-        if ($case->source->is_invima) {
-            $data['analysis_method'] = 'cause_effect';
-        }
+        $data['analysis_method'] = $case->source->is_invima || $data['priority_score'] > 4
+            ? 'cause_effect'
+            : 'five_whys';
         $data += ['validated_by' => $request->user()->id, 'validated_at' => now(), 'status' => 'analysis'];
         $case->update($data);
 
