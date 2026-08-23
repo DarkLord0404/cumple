@@ -61,6 +61,7 @@ class CaseTaskController extends Controller
             $data['external_assignee_name'] = $data['external_assignee_email'] = null;
         } else {
             $data['assigned_to'] = null;
+            $assigneeIds = collect();
         }
 
         unset($data['assignee_ids']);
@@ -182,19 +183,38 @@ class CaseTaskController extends Controller
     {
         $this->authorizeTaskManagement($request, $task);
         $data = $request->validate([
-            'assignee_ids' => ['required', 'array', 'min:1'],
+            'assignee_type' => ['required', Rule::in(['internal', 'external'])],
+            'assignee_ids' => ['nullable', 'array'],
             'assignee_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', true)->where('organization_id', $request->user()->organization_id))],
+            'external_assignee_name' => ['nullable', 'required_if:assignee_type,external', 'string', 'max:255'],
+            'external_assignee_email' => ['nullable', 'email', 'max:255'],
         ]);
         $previousAssignees = $task->assignees()->pluck('users.id');
-        $task->assignees()->sync($data['assignee_ids']);
-        $task->update(['assigned_to' => $data['assignee_ids'][0], 'assignee_type' => 'internal']);
-        $newAssignees = collect($data['assignee_ids'])->diff($previousAssignees);
+        $assigneeIds = collect($data['assignee_ids'] ?? [])->unique()->values();
+        if ($data['assignee_type'] === 'internal') {
+            abort_if($assigneeIds->isEmpty(), 422, 'Agrega al menos un responsable CUMPLE.');
+            $task->update([
+                'assigned_to' => $assigneeIds->first(), 'assignee_type' => 'internal',
+                'external_assignee_name' => null, 'external_assignee_email' => null,
+            ]);
+        } else {
+            $assigneeIds = collect();
+            $task->update([
+                'assigned_to' => null, 'assignee_type' => 'external',
+                'external_assignee_name' => $data['external_assignee_name'],
+                'external_assignee_email' => $data['external_assignee_email'] ?? null,
+            ]);
+        }
+        $task->assignees()->sync($assigneeIds);
+        $newAssignees = $assigneeIds->diff($previousAssignees);
         if ($newAssignees->isNotEmpty()) {
             Notification::send(User::whereIn('id', $newAssignees)->get(), new TaskAssignedNotification($task, $request->user()));
         }
-        $names = User::whereIn('id', $data['assignee_ids'])->orderBy('name')->pluck('name')->join(', ');
+        $names = $data['assignee_type'] === 'external'
+            ? $data['external_assignee_name']
+            : User::whereIn('id', $assigneeIds)->orderBy('name')->pluck('name')->join(', ');
         $this->recordActivity($task, $request->user(), 'assignees_updated', 'Responsables actualizados: '.$names.'.', [
-            'before' => $previousAssignees->all(), 'after' => $data['assignee_ids'],
+            'before' => $previousAssignees->all(), 'after' => $assigneeIds->all(), 'type' => $data['assignee_type'],
         ]);
 
         return back()->with('status', 'Responsables actualizados.');

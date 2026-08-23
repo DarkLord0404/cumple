@@ -83,11 +83,51 @@ class ImprovementManagementTest extends TestCase
         $task->assignees()->sync([$responsible->id]);
 
         $this->actingAs($creator)->patch(route('tasks.assignees.update', $task), [
+            'assignee_type' => 'internal',
             'assignee_ids' => [$replacement->id],
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         $this->assertEquals([$replacement->id], $task->assignees()->pluck('users.id')->all());
         $this->assertSame($replacement->id, $task->fresh()->assigned_to);
+    }
+
+    public function test_cause_effect_analysis_saves_a_description_for_each_selected_category(): void
+    {
+        [$creator, , $case] = $this->caseFixture();
+        $case->update(['analysis_method' => 'cause_effect']);
+
+        $this->actingAs($creator)->patch(route('cases.analysis.update', $case), [
+            'immediate_correction' => 'Contención inicial',
+            'cause_categories' => ['personal', 'procedures'],
+            'cause_descriptions' => [
+                'personal' => 'El equipo no conocía el procedimiento.',
+                'procedures' => 'El documento no definía el responsable.',
+            ],
+            'root_cause' => 'Falta de definición y socialización.',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $causes = $case->fresh()->analysis_data['causes'];
+        $this->assertSame('Personal, habilidad o técnica', $causes[0]['category']);
+        $this->assertSame('El documento no definía el responsable.', $causes[1]['description']);
+    }
+
+    public function test_task_responsibility_can_change_from_internal_users_to_external_person(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $task = $this->createTask($creator, $responsible, $case);
+        $task->assignees()->sync([$responsible->id]);
+
+        $this->actingAs($creator)->patch(route('tasks.assignees.update', $task), [
+            'assignee_type' => 'external',
+            'external_assignee_name' => 'Proveedor externo',
+            'external_assignee_email' => 'proveedor@example.com',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $task->refresh();
+        $this->assertSame('external', $task->assignee_type);
+        $this->assertSame('Proveedor externo', $task->external_assignee_name);
+        $this->assertNull($task->assigned_to);
+        $this->assertCount(0, $task->assignees);
     }
 
     public function test_action_requires_quality_and_medical_directorate_approval_to_close(): void

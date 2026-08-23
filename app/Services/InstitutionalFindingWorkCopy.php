@@ -77,8 +77,11 @@ class InstitutionalFindingWorkCopy
             throw ValidationException::withMessages(['document' => 'El Excel no contiene la hoja de análisis de causa–efecto.']);
         }
         $sheet->setCellValue('A2', $case->immediate_correction);
-        $description = collect(data_get($case->analysis_data, 'categories', []))->map(fn ($category) => "• {$category}")->join("\n");
-        if (data_get($case->analysis_data, 'description')) {
+        $causes = collect(data_get($case->analysis_data, 'causes', []));
+        $description = $causes->isNotEmpty()
+            ? $causes->map(fn ($cause) => "• ".data_get($cause, 'category').": ".data_get($cause, 'description'))->join("\n")
+            : collect(data_get($case->analysis_data, 'categories', []))->map(fn ($category) => "• {$category}")->join("\n");
+        if ($causes->isEmpty() && data_get($case->analysis_data, 'description')) {
             $description .= ($description ? "\n\n" : '').data_get($case->analysis_data, 'description');
         }
         $sheet->setCellValue('A10', $description);
