@@ -239,8 +239,13 @@ class MeetingMinuteController extends Controller
     {
         $this->authorizeVisibility($minute);
         abort_unless($minute->generated_document_path && Storage::disk('local')->exists($minute->generated_document_path), 404);
+        $version = $minute->documentVersions()->where('path', $minute->generated_document_path)->value('version');
+        $suffix = $version ? "-v{$version}" : '';
 
-        return Storage::disk('local')->download($minute->generated_document_path, "acta-{$minute->number}.docx");
+        return Storage::disk('local')->download($minute->generated_document_path, "acta-{$minute->number}{$suffix}.docx", [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+        ]);
     }
 
     public function downloadVersion(MeetingMinute $minute, MinuteDocumentVersion $version): StreamedResponse

@@ -58,6 +58,17 @@ with tempfile.TemporaryDirectory() as temporary:
                     if alignment is None:
                         alignment = etree.SubElement(properties, f"{{{namespace['w']}}}vAlign")
                     alignment.set(f"{{{namespace['w']}}}val", "center")
+
+                    for paragraph in cell.xpath("./w:p", namespaces=namespace):
+                        paragraph_properties = paragraph.find("w:pPr", namespaces=namespace)
+                        if paragraph_properties is None:
+                            paragraph_properties = etree.Element(f"{{{namespace['w']}}}pPr")
+                            paragraph.insert(0, paragraph_properties)
+                        spacing = paragraph_properties.find("w:spacing", namespaces=namespace)
+                        if spacing is None:
+                            spacing = etree.SubElement(paragraph_properties, f"{{{namespace['w']}}}spacing")
+                        spacing.set(f"{{{namespace['w']}}}before", "0")
+                        spacing.set(f"{{{namespace['w']}}}after", "0")
                 data = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone="yes")
             archive_out.writestr(item, data)
     shutil.copyfile(output, source)
