@@ -29,6 +29,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('hallazgos', ImprovementCaseController::class)->only(['index', 'create', 'store', 'show'])->parameters(['hallazgos' => 'case'])->names('cases');
     Route::resource('actas', MeetingMinuteController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update'])->parameters(['actas' => 'minute'])->names('minutes');
     Route::post('actas/{minute}/compromisos', [MeetingMinuteController::class, 'addCommitment'])->name('minutes.commitments.store');
+    Route::post('actas/{minute}/propuestas/{proposal}/convertir', [MeetingMinuteController::class, 'convertProposal'])->name('minutes.proposals.convert');
+    Route::patch('actas/{minute}/propuestas/{proposal}/descartar', [MeetingMinuteController::class, 'dismissProposal'])->name('minutes.proposals.dismiss');
     Route::patch('actas/{minute}/compromisos/{task}', [MeetingMinuteController::class, 'updateCommitment'])->name('minutes.commitments.update');
     Route::delete('actas/{minute}/compromisos/{task}', [MeetingMinuteController::class, 'destroyCommitment'])->name('minutes.commitments.destroy');
     Route::post('actas/{minute}/generar', [MeetingMinuteController::class, 'generate'])->name('minutes.generate');

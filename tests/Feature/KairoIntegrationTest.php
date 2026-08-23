@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\IntegrationConnection;
 use App\Models\MeetingMinute;
+use App\Models\MinuteCommitmentProposal;
+use App\Models\Task;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,9 +83,50 @@ MD,
         $this->assertSame('Se revisaron los resultados y sus causas.', $minute->development);
         $this->assertSame('Se aprobó continuar el plan.', $minute->decisions);
         $this->assertSame('Actualizar protocolo', $minute->external_payload['parsed_commitments'][0]['title']);
+        $this->assertSame('Actualizar protocolo', $minute->commitmentProposals()->firstOrFail()->title);
         $this->assertEquals([$participant->id], $minute->attendees()->pluck('users.id')->all());
         $this->assertSame('Persona externa', $minute->external_participants[0]['name']);
         $this->assertCount(0, $minute->tasks);
+    }
+
+    public function test_kairo_proposal_is_reviewed_and_converted_to_an_assigned_task_once(): void
+    {
+        $organization = Organization::create(['name' => 'Organización', 'slug' => 'propuestas', 'is_active' => true]);
+        $admin = User::factory()->create(['organization_id' => $organization->id, 'role' => 'administrator']);
+        $responsible = User::factory()->create(['organization_id' => $organization->id, 'is_active' => true]);
+        $area = \App\Models\Area::withoutGlobalScopes()->create([
+            'organization_id' => $organization->id, 'name' => 'Dirección Médica', 'slug' => 'direccion-medica-propuesta', 'is_active' => true,
+        ]);
+        $minute = MeetingMinute::withoutGlobalScopes()->create([
+            'organization_id' => $organization->id, 'number' => 'KAIRO-PROP', 'title' => 'Comité',
+            'created_by' => $admin->id, 'held_at' => now(), 'status' => 'draft', 'source_system' => 'kairo',
+            'external_reference' => 'proposal-1',
+        ]);
+        $proposal = MinuteCommitmentProposal::withoutGlobalScopes()->create([
+            'organization_id' => $organization->id, 'meeting_minute_id' => $minute->id,
+            'external_key' => hash('sha256', 'actualizar protocolo'), 'title' => 'Actualizar protocolo',
+            'suggested_responsible' => $responsible->name, 'status' => 'pending',
+        ]);
+
+        $payload = [
+            'title' => 'Actualizar y socializar protocolo', 'assignee_type' => 'internal',
+            'assignee_ids' => [$responsible->id], 'due_at' => now()->addWeek()->toDateString(),
+            'area_id' => $area->id,
+            'expected_result' => 'Protocolo actualizado y registro de socialización.',
+        ];
+        $this->actingAs($admin)->post(route('minutes.proposals.convert', [$minute, $proposal]), $payload)
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        $task = Task::firstOrFail();
+        $this->assertSame($minute->id, $task->meeting_minute_id);
+        $this->assertSame($responsible->id, $task->assigned_to);
+        $this->assertSame('converted', $proposal->fresh()->status);
+        $this->assertSame($task->id, $proposal->fresh()->task_id);
+        $this->assertSame('Nueva tarea asignada', $responsible->fresh()->unreadNotifications->first()?->data['title']);
+
+        $this->actingAs($admin)->post(route('minutes.proposals.convert', [$minute, $proposal]), $payload)
+            ->assertStatus(422);
+        $this->assertSame(1, Task::count());
     }
 
     public function test_kairo_minutes_are_hidden_unless_organization_configuration_allows_access(): void

@@ -44,4 +44,9 @@ class MeetingMinute extends Model
     {
         return $this->hasMany(MinuteDocumentVersion::class)->latest('version');
     }
+
+    public function commitmentProposals(): HasMany
+    {
+        return $this->hasMany(MinuteCommitmentProposal::class);
+    }
 }

@@ -7,6 +7,7 @@ use App\Models\IntegrationConnection;
 use App\Models\MeetingMinute;
 use App\Models\User;
 use App\Services\KairoMinutesParser;
+use App\Services\KairoCommitmentProposalSynchronizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ use Illuminate\Support\Str;
 
 class KairoMeetingImportController extends Controller
 {
-    public function __invoke(Request $request, KairoMinutesParser $parser): JsonResponse
+    public function __invoke(Request $request, KairoMinutesParser $parser, KairoCommitmentProposalSynchronizer $proposals): JsonResponse
     {
         $token = $request->bearerToken();
         abort_unless(is_string($token) && strlen($token) >= 40, 401, 'Credencial de integración ausente.');
@@ -48,7 +49,7 @@ class KairoMeetingImportController extends Controller
             $participants
         );
 
-        $minute = DB::transaction(function () use ($connection, $data, $parsed, $internalIds, $externalParticipants): MeetingMinute {
+        $minute = DB::transaction(function () use ($connection, $data, $parsed, $internalIds, $externalParticipants, $proposals): MeetingMinute {
             $minute = MeetingMinute::withoutGlobalScopes()->firstOrNew(
                 [
                     'organization_id' => $connection->organization_id,
@@ -75,6 +76,7 @@ class KairoMeetingImportController extends Controller
                     'external_payload' => $data + ['parsed_commitments' => $parsed['commitments']],
                 ])->save();
             $minute->attendees()->sync($internalIds);
+            $proposals->sync($minute, $parsed['commitments']);
             $connection->forceFill(['last_used_at' => now()])->save();
 
             return $minute;

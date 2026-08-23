@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Area;
 use App\Models\MeetingMinute;
 use App\Models\MinuteDocumentVersion;
+use App\Models\MinuteCommitmentProposal;
 use App\Models\Organization;
 use App\Models\Task;
 use App\Models\User;
@@ -14,6 +15,7 @@ use App\Services\KairoMinuteVisibility;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -58,7 +60,16 @@ class MeetingMinuteController extends Controller
     public function show(MeetingMinute $minute): View
     {
         $this->authorizeVisibility($minute);
-        return view('minutes.show', ['minute' => $minute->load(['area', 'attendees', 'tasks.assignee', 'tasks.assignees', 'documentVersions.generator']), 'users' => User::where('is_active', true)->orderBy('name')->get()]);
+        $users = User::where('is_active', true)->orderBy('name')->get();
+        $minute->load(['area', 'attendees', 'tasks.assignee', 'tasks.assignees', 'documentVersions.generator', 'commitmentProposals.task']);
+        $suggestedUsers = $minute->commitmentProposals->mapWithKeys(function (MinuteCommitmentProposal $proposal) use ($users): array {
+            $suggested = Str::lower(Str::ascii(trim((string) $proposal->suggested_responsible)));
+            $match = $suggested === '' ? null : $users->first(fn (User $user) => Str::lower(Str::ascii(trim($user->name))) === $suggested);
+            return [$proposal->id => $match?->id];
+        });
+
+        $areas = Area::where('is_active', true)->orderBy('name')->get();
+        return view('minutes.show', compact('minute', 'users', 'areas', 'suggestedUsers'));
     }
 
     public function edit(MeetingMinute $minute): View
@@ -93,7 +104,10 @@ class MeetingMinuteController extends Controller
             'assignee_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('organization_id', $request->user()->organization_id)],
             'external_assignee_name' => ['nullable', 'required_if:assignee_type,external', 'string', 'max:255'],
             'due_at' => ['required', 'date'], 'expected_result' => ['nullable', 'string'],
+            'area_id' => ['nullable', Rule::exists('areas', 'id')->where('organization_id', $request->user()->organization_id)],
         ]);
+        $areaId = $data['area_id'] ?? $minute->area_id;
+        abort_unless($areaId, 422, 'Selecciona el área responsable del compromiso.');
         $assigneeIds = collect($data['assignee_ids'] ?? [($data['assigned_to'] ?? null)])->filter()->unique()->values();
         if ($data['assignee_type'] === 'external') {
             $data['assigned_to'] = null;
@@ -102,13 +116,68 @@ class MeetingMinuteController extends Controller
             $data['assigned_to'] = $assigneeIds->first();
         }
         unset($data['assignee_ids']);
-        $task = Task::create($data + ['code' => 'AC-'.now()->format('Y').'-'.Str::upper(Str::random(6)), 'area_id' => $minute->area_id, 'meeting_minute_id' => $minute->id, 'created_by' => $request->user()->id, 'priority' => 'medium', 'status' => 'pending']);
+        $task = Task::create($data + ['code' => 'AC-'.now()->format('Y').'-'.Str::upper(Str::random(6)), 'area_id' => $areaId, 'meeting_minute_id' => $minute->id, 'created_by' => $request->user()->id, 'priority' => 'medium', 'status' => 'pending']);
         $task->assignees()->sync($assigneeIds);
         if ($assigneeIds->isNotEmpty()) {
             Notification::send(User::whereIn('id', $assigneeIds)->get(), new TaskAssignedNotification($task, $request->user()));
         }
 
         return back()->with('status', 'Compromiso agregado y asignado como acción.');
+    }
+
+    public function convertProposal(Request $request, MeetingMinute $minute, MinuteCommitmentProposal $proposal): RedirectResponse
+    {
+        $this->authorizeVisibility($minute);
+        abort_unless($proposal->meeting_minute_id === $minute->id, 404);
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'assignee_type' => ['required', Rule::in(['internal', 'external'])],
+            'assignee_ids' => ['nullable', 'array'],
+            'assignee_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('organization_id', $request->user()->organization_id)],
+            'external_assignee_name' => ['nullable', 'required_if:assignee_type,external', 'string', 'max:255'],
+            'due_at' => ['required', 'date'],
+            'expected_result' => ['nullable', 'string'],
+            'area_id' => ['required', Rule::exists('areas', 'id')->where('organization_id', $request->user()->organization_id)],
+        ]);
+        $assigneeIds = collect($data['assignee_ids'] ?? [])->filter()->unique()->values();
+        if ($data['assignee_type'] === 'internal') {
+            abort_if($assigneeIds->isEmpty(), 422, 'Selecciona al menos un responsable interno.');
+            $data['assigned_to'] = $assigneeIds->first();
+            $data['external_assignee_name'] = null;
+        } else {
+            $data['assigned_to'] = null;
+            $assigneeIds = collect();
+        }
+        unset($data['assignee_ids']);
+
+        $task = DB::transaction(function () use ($proposal, $minute, $data, $assigneeIds, $request): Task {
+            $locked = MinuteCommitmentProposal::whereKey($proposal->id)->lockForUpdate()->firstOrFail();
+            abort_if($locked->status !== 'pending', 422, 'Esta propuesta ya fue procesada.');
+            $task = Task::create($data + [
+                'code' => 'AC-'.now()->format('Y').'-'.Str::upper(Str::random(6)),
+                'area_id' => $data['area_id'], 'meeting_minute_id' => $minute->id,
+                'created_by' => $request->user()->id, 'priority' => 'medium', 'status' => 'pending',
+            ]);
+            $task->assignees()->sync($assigneeIds);
+            $locked->update(['status' => 'converted', 'task_id' => $task->id]);
+            $minute->update(['status' => 'draft']);
+            return $task;
+        });
+        if ($assigneeIds->isNotEmpty()) {
+            Notification::send(User::whereIn('id', $assigneeIds)->get(), new TaskAssignedNotification($task, $request->user()));
+        }
+
+        return back()->with('status', 'Compromiso convertido en tarea y asignado correctamente.');
+    }
+
+    public function dismissProposal(MeetingMinute $minute, MinuteCommitmentProposal $proposal): RedirectResponse
+    {
+        $this->authorizeVisibility($minute);
+        abort_unless($proposal->meeting_minute_id === $minute->id, 404);
+        abort_if($proposal->status !== 'pending', 422, 'Esta propuesta ya fue procesada.');
+        $proposal->update(['status' => 'dismissed']);
+
+        return back()->with('status', 'Propuesta descartada. No se creó ninguna tarea.');
     }
 
     public function updateCommitment(Request $request, MeetingMinute $minute, Task $task): RedirectResponse

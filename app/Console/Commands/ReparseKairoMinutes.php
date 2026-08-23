@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\MeetingMinute;
 use App\Services\KairoMinutesParser;
+use App\Services\KairoCommitmentProposalSynchronizer;
 use Illuminate\Console\Command;
 
 class ReparseKairoMinutes extends Command
@@ -11,10 +12,10 @@ class ReparseKairoMinutes extends Command
     protected $signature = 'minutes:reparse-kairo';
     protected $description = 'Separa el Markdown almacenado de Kairo en los campos del acta';
 
-    public function handle(KairoMinutesParser $parser): int
+    public function handle(KairoMinutesParser $parser, KairoCommitmentProposalSynchronizer $proposals): int
     {
         $updated = 0;
-        MeetingMinute::withoutGlobalScopes()->where('source_system', 'kairo')->each(function (MeetingMinute $minute) use ($parser, &$updated): void {
+        MeetingMinute::withoutGlobalScopes()->where('source_system', 'kairo')->each(function (MeetingMinute $minute) use ($parser, $proposals, &$updated): void {
             $payload = $minute->external_payload ?? [];
             $markdown = $payload['minutes_markdown'] ?? null;
             if (! $markdown) {
@@ -27,6 +28,7 @@ class ReparseKairoMinutes extends Command
                 'external_payload' => $payload + ['parsed_commitments' => $parsed['commitments']],
                 'status' => 'draft',
             ])->save();
+            $proposals->sync($minute, $parsed['commitments']);
             $updated++;
         });
         $this->info("Actas reestructuradas: {$updated}");
