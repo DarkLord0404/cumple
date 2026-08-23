@@ -15,6 +15,31 @@ with tempfile.TemporaryDirectory() as temporary:
             data = archive_in.read(item.filename)
             if item.filename == "word/document.xml":
                 root = etree.fromstring(data)
+                agenda_tables = root.xpath(
+                    ".//w:tbl[contains(string(.), 'AGENDA / TEMAS A TRATAR')]",
+                    namespaces=namespace,
+                )
+                if agenda_tables:
+                    agenda_rows = agenda_tables[0].xpath("./w:tr[position() > 1]", namespaces=namespace)
+                    for index, row in enumerate(agenda_rows[:4], start=1):
+                        cells = row.xpath("./w:tc", namespaces=namespace)
+                        if len(cells) < 3:
+                            continue
+                        for cell, marker in (
+                            (cells[-2], f"{{{{agendaNumero{index}}}}}"),
+                            (cells[-1], f"{{{{agenda{index}}}}}"),
+                        ):
+                            texts = cell.xpath(".//w:t", namespaces=namespace)
+                            if texts:
+                                texts[0].text = marker
+                                for extra in texts[1:]:
+                                    extra.text = ""
+                            else:
+                                paragraphs = cell.xpath("./w:p", namespaces=namespace)
+                                paragraph = paragraphs[0] if paragraphs else etree.SubElement(cell, f"{{{namespace['w']}}}p")
+                                run = etree.SubElement(paragraph, f"{{{namespace['w']}}}r")
+                                etree.SubElement(run, f"{{{namespace['w']}}}t").text = marker
+
                 for row in list(root.xpath(".//w:tr", namespaces=namespace)):
                     text = "".join(row.xpath(".//w:t/text()", namespaces=namespace))
                     if any(marker in text for marker in ("{{participante2}}", "{{participante3}}", "{{compromiso2}}")):
@@ -23,6 +48,16 @@ with tempfile.TemporaryDirectory() as temporary:
                         first_cell_text = row.xpath("./w:tc[1]//w:t", namespaces=namespace)
                         if first_cell_text:
                             first_cell_text[0].text = "{{compromisoNumero}}"
+
+                for cell in root.xpath(".//w:tbl//w:tc", namespaces=namespace):
+                    properties = cell.find("w:tcPr", namespaces=namespace)
+                    if properties is None:
+                        properties = etree.Element(f"{{{namespace['w']}}}tcPr")
+                        cell.insert(0, properties)
+                    alignment = properties.find("w:vAlign", namespaces=namespace)
+                    if alignment is None:
+                        alignment = etree.SubElement(properties, f"{{{namespace['w']}}}vAlign")
+                    alignment.set(f"{{{namespace['w']}}}val", "center")
                 data = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone="yes")
             archive_out.writestr(item, data)
     shutil.copyfile(output, source)

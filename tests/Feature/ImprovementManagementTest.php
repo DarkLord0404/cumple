@@ -343,6 +343,7 @@ class ImprovementManagementTest extends TestCase
             'number' => '2026-001', 'title' => 'Revisión de caso', 'area_id' => $area->id,
             'created_by' => $user->id, 'held_at' => now(), 'location' => 'Virtual',
             'objective' => 'Revisar el caso', 'development' => 'Se analizó la situación.',
+            'agenda' => "1. Presentación del caso\n2. Revisión de indicadores\n3. Acuerdos\n4. Seguimiento\n5. Cierre",
             'status' => 'draft',
         ]);
 
@@ -357,6 +358,15 @@ class ImprovementManagementTest extends TestCase
         $zip->close();
         $this->assertStringContainsString('Revisar el caso', $documentXml);
         $this->assertStringNotContainsString('{{objetivo}}', $documentXml);
+        $document = new \DOMDocument;
+        $document->loadXML($documentXml);
+        $xpath = new \DOMXPath($document);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        foreach (['Presentación del caso', 'Revisión de indicadores', 'Acuerdos', 'Seguimiento', 'Cierre'] as $topic) {
+            $rows = $xpath->query("//w:tr[.//w:t[contains(., '{$topic}')]]");
+            $this->assertSame(1, $rows->length, "La agenda debe contener una fila independiente para {$topic}.");
+        }
+        $this->assertGreaterThan(0, $xpath->query('//w:tbl//w:tc/w:tcPr/w:vAlign[@w:val="center"]')->length);
     }
 
     public function test_minute_draft_can_be_edited_and_word_generations_keep_versions(): void
