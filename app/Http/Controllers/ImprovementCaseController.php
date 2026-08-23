@@ -22,12 +22,10 @@ class ImprovementCaseController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = ImprovementCase::query()->with(['source', 'reportingArea'])->withCount('tasks');
         $user = $request->user();
-        if (! in_array($user->role, ['administrator', 'quality'])) {
-            $query->whereHas('tasks', fn ($tasks) => $tasks->where('assigned_to', $user->id)
-                ->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->id)));
-        }
+        $query = ImprovementCase::query()
+            ->visibleTo($user, app(ApprovalWorkflow::class)->typeFor($user) !== null)
+            ->with(['source', 'reportingArea'])->withCount('tasks');
         $availableCases = clone $query;
         $availableCaseIds = (clone $availableCases)->pluck('improvement_cases.id');
         $availableValues = ImprovementCase::whereKey($availableCaseIds);
@@ -145,6 +143,8 @@ class ImprovementCaseController extends Controller
 
     public function show(ImprovementCase $case, ApprovalWorkflow $approvalWorkflow): View
     {
+        $this->authorize('view', $case);
+
         return view('cases.show', [
             'case' => $case->load(['source', 'reportingArea', 'reportedArea', 'reporter', 'documents.uploader', 'tasks.assignee', 'tasks.assignees', 'tasks.evidences.uploader', 'tasks.qualityApprover', 'tasks.medicalApprover']),
             'users' => User::where('is_active', true)->with('area')->orderBy('name')->get(),

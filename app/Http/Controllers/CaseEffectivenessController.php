@@ -10,6 +10,7 @@ class CaseEffectivenessController extends Controller
 {
     public function update(Request $request, ImprovementCase $case): RedirectResponse
     {
+        $this->authorize('view', $case);
         abort_unless(in_array($request->user()->role, ['administrator', 'quality']) || $request->user()->isCoordinator(), 403);
         $data = $request->validate([
             'impact_before' => ['required', 'string'],

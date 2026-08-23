@@ -15,6 +15,7 @@ class OfficialDocumentController extends Controller
 {
     public function generate(Request $request, ImprovementCase $case, InstitutionalFindingWorkCopy $generator): RedirectResponse
     {
+        $this->authorize('view', $case);
         $original = $case->documents()->where('document_stage', 'original')
             ->where(fn ($documents) => $documents
                 ->whereRaw('LOWER(original_name) LIKE ?', ['%.xlsx'])
@@ -39,6 +40,7 @@ class OfficialDocumentController extends Controller
 
     public function store(Request $request, ImprovementCase $case): RedirectResponse
     {
+        $this->authorize('view', $case);
         $data = $request->validate([
             'file' => ['required', 'file', 'max:25600', 'mimes:xlsx,xls,docx,doc,pdf'],
             'document_stage' => ['required', Rule::in(['original', 'working', 'final'])],
@@ -59,6 +61,7 @@ class OfficialDocumentController extends Controller
 
     public function download(OfficialDocument $document): StreamedResponse
     {
+        $this->authorize('view', $document->improvementCase);
         abort_unless(Storage::disk($document->disk)->exists($document->path), 404);
 
         return Storage::disk($document->disk)->download($document->path, $document->original_name);

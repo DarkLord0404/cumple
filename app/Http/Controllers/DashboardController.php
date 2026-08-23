@@ -36,7 +36,9 @@ class DashboardController extends Controller
             ],
             'taskResults' => $filtered->orderByRaw("case when status = 'completed' then 1 else 0 end")
                 ->orderByRaw('case when due_at is null then 1 else 0 end')->orderBy('due_at')->paginate(20)->withQueryString(),
-            'openCases' => ImprovementCase::whereNotIn('status', ['closed', 'cancelled'])->count(),
+            'openCases' => ImprovementCase::query()
+                ->visibleTo($request->user(), $canApprove)
+                ->whereNotIn('status', ['closed', 'cancelled'])->count(),
             'areas' => Area::whereIn('id', (clone $availableTasks)->whereNotNull('area_id')->distinct()->pluck('area_id'))->orderBy('name')->get(),
             'users' => User::whereIn('id', $assigneeIds)->orderBy('name')->get(),
             'taskStatuses' => (clone $availableTasks)->distinct()->pluck('status')->filter()->values(),

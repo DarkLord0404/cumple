@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -52,5 +53,23 @@ class ImprovementCase extends Model
     public function effectivenessEvaluator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'effectiveness_evaluated_by');
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user, bool $canApprove = false): Builder
+    {
+        if ($user->role === 'administrator') {
+            return $query;
+        }
+
+        return $query->where(function (Builder $query) use ($user, $canApprove): void {
+            $query->where('reported_by', $user->id)
+                ->orWhereHas('tasks', fn (Builder $tasks) => $tasks
+                    ->where('assigned_to', $user->id)
+                    ->orWhereHas('assignees', fn (Builder $assignees) => $assignees->whereKey($user->id)));
+
+            if ($canApprove) {
+                $query->orWhereHas('tasks', fn (Builder $tasks) => $tasks->where('status', 'in_review'));
+            }
+        });
     }
 }

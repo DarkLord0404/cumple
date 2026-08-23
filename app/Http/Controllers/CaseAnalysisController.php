@@ -11,6 +11,7 @@ class CaseAnalysisController extends Controller
 {
     public function updatePrioritization(Request $request, ImprovementCase $case): RedirectResponse
     {
+        $this->authorize('view', $case);
         $data = $request->validate([
             'urgency_score' => ['required', 'integer', 'min:0', 'max:10'],
             'scope_score' => ['required', 'integer', 'min:0', 'max:10'],
@@ -29,6 +30,7 @@ class CaseAnalysisController extends Controller
 
     public function updateAnalysis(Request $request, ImprovementCase $case): RedirectResponse
     {
+        $this->authorize('view', $case);
         abort_if(! $case->analysis_method, 422, 'Primero debe realizar la priorización.');
         $rules = [
             'immediate_correction' => ['nullable', 'string'],

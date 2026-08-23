@@ -38,6 +38,7 @@ class CaseTaskController extends Controller
 
     public function store(Request $request, ImprovementCase $case): RedirectResponse
     {
+        $this->authorize('view', $case);
         abort_if($case->status === 'closed', 422, 'Un plan cerrado no admite nuevas acciones. Debe marcarse como no eficaz para reabrirlo.');
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],

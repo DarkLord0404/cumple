@@ -614,6 +614,38 @@ class ImprovementManagementTest extends TestCase
             ->assertSee('Seguimiento y evidencias');
     }
 
+    public function test_creator_sees_their_own_opportunity_even_without_assigned_tasks(): void
+    {
+        [$creator, , $case] = $this->caseFixture();
+
+        $this->actingAs($creator)->get(route('cases.index'))
+            ->assertOk()
+            ->assertSee($case->title);
+        $this->actingAs($creator)->get(route('cases.show', $case))->assertOk();
+    }
+
+    public function test_unrelated_user_cannot_list_or_open_an_opportunity(): void
+    {
+        [, , $case] = $this->caseFixture();
+        $unrelated = User::factory()->create();
+
+        $this->actingAs($unrelated)->get(route('cases.index'))
+            ->assertOk()
+            ->assertDontSee($case->title);
+        $this->actingAs($unrelated)->get(route('cases.show', $case))->assertForbidden();
+    }
+
+    public function test_task_assignee_can_see_the_linked_opportunity(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $this->createTask($creator, $responsible, $case);
+
+        $this->actingAs($responsible)->get(route('cases.index'))
+            ->assertOk()
+            ->assertSee($case->title);
+        $this->actingAs($responsible)->get(route('cases.show', $case))->assertOk();
+    }
+
     public function test_imported_accreditation_opportunity_is_execution_only(): void
     {
         [$creator, $responsible, $case] = $this->caseFixture();
