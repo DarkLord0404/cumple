@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EvidenceController;
 use App\Http\Controllers\ImprovementCaseController;
 use App\Http\Controllers\MeetingMinuteController;
+use App\Http\Controllers\MinuteTemplateController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfficialDocumentController;
 use App\Http\Controllers\ProfileController;
@@ -26,10 +27,13 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verif
 Route::middleware('auth')->group(function () {
     Route::post('hallazgos/importar-excel', [ImprovementCaseController::class, 'importSpreadsheet'])->name('cases.import');
     Route::resource('hallazgos', ImprovementCaseController::class)->only(['index', 'create', 'store', 'show'])->parameters(['hallazgos' => 'case'])->names('cases');
-    Route::resource('actas', MeetingMinuteController::class)->only(['index', 'create', 'store', 'show'])->parameters(['actas' => 'minute'])->names('minutes');
+    Route::resource('actas', MeetingMinuteController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update'])->parameters(['actas' => 'minute'])->names('minutes');
     Route::post('actas/{minute}/compromisos', [MeetingMinuteController::class, 'addCommitment'])->name('minutes.commitments.store');
+    Route::patch('actas/{minute}/compromisos/{task}', [MeetingMinuteController::class, 'updateCommitment'])->name('minutes.commitments.update');
+    Route::delete('actas/{minute}/compromisos/{task}', [MeetingMinuteController::class, 'destroyCommitment'])->name('minutes.commitments.destroy');
     Route::post('actas/{minute}/generar', [MeetingMinuteController::class, 'generate'])->name('minutes.generate');
     Route::get('actas/{minute}/descargar', [MeetingMinuteController::class, 'download'])->name('minutes.download');
+    Route::get('actas/{minute}/versiones/{version}/descargar', [MeetingMinuteController::class, 'downloadVersion'])->name('minutes.versions.download');
     Route::post('hallazgos/{case}/acciones', [CaseTaskController::class, 'store'])->name('cases.tasks.store');
     Route::patch('hallazgos/{case}/priorizacion', [CaseAnalysisController::class, 'updatePrioritization'])->name('cases.prioritization.update');
     Route::patch('hallazgos/{case}/analisis', [CaseAnalysisController::class, 'updateAnalysis'])->name('cases.analysis.update');
@@ -59,6 +63,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('administracion/organizacion', [AdministrationCatalogController::class, 'updateOrganization'])->name('organization.update');
     Route::patch('administracion/recordatorios', [AdministrationCatalogController::class, 'updateReminders'])->name('reminders.update');
     Route::patch('administracion/aprobaciones', [AdministrationCatalogController::class, 'updateApprovals'])->name('approvals.update');
+    Route::get('administracion/plantilla-actas', [MinuteTemplateController::class, 'edit'])->name('administration.minute-template');
+    Route::put('administracion/plantilla-actas', [MinuteTemplateController::class, 'update'])->name('minute-template.update');
+    Route::delete('administracion/plantilla-actas', [MinuteTemplateController::class, 'destroy'])->name('minute-template.destroy');
     Route::post('administracion/areas', [AdministrationCatalogController::class, 'storeArea'])->name('areas.store');
     Route::patch('administracion/areas/{area}', [AdministrationCatalogController::class, 'updateArea'])->name('areas.update');
     Route::delete('administracion/areas/{area}', [AdministrationCatalogController::class, 'destroyArea'])->name('areas.destroy');

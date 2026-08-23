@@ -8,9 +8,13 @@ use PhpOffice\PhpWord\TemplateProcessor;
 
 class InstitutionalMinuteDocument
 {
-    public function generate(MeetingMinute $minute): string
+    public function generate(MeetingMinute $minute, int $version): string
     {
-        $template = resource_path('templates/plantilla_acta_institucional.docx');
+        $minute->loadMissing('organization');
+        $customTemplate = $minute->organization?->minute_template_path;
+        $template = $customTemplate && Storage::disk('local')->exists($customTemplate)
+            ? Storage::disk('local')->path($customTemplate)
+            : resource_path('templates/plantilla_acta_institucional.docx');
         abort_unless(is_file($template), 500, 'No está disponible la plantilla institucional.');
         $minute->loadMissing(['tasks.assignee', 'attendees']);
         $participants = $minute->attendees->map(fn ($user) => ['name' => $user->name, 'role' => $user->role_label])
@@ -44,7 +48,7 @@ class InstitutionalMinuteDocument
         ]);
         $directory = "minutes/{$minute->id}";
         Storage::disk('local')->makeDirectory($directory);
-        $path = "{$directory}/acta-{$minute->number}.docx";
+        $path = "{$directory}/acta-{$minute->number}-v{$version}.docx";
         $processor->saveAs(Storage::disk('local')->path($path));
 
         return $path;

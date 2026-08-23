@@ -349,6 +349,7 @@ class ImprovementManagementTest extends TestCase
         $this->actingAs($user)->post(route('minutes.generate', $minute))->assertSessionHasNoErrors();
         $minute->refresh();
         $this->assertSame('ready', $minute->status);
+        $this->assertCount(1, $minute->documentVersions);
         Storage::disk('local')->assertExists($minute->generated_document_path);
         $zip = new \ZipArchive;
         $this->assertTrue($zip->open(Storage::disk('local')->path($minute->generated_document_path)) === true);
@@ -356,6 +357,32 @@ class ImprovementManagementTest extends TestCase
         $zip->close();
         $this->assertStringContainsString('Revisar el caso', $documentXml);
         $this->assertStringNotContainsString('{{objetivo}}', $documentXml);
+    }
+
+    public function test_minute_draft_can_be_edited_and_word_generations_keep_versions(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $area = Area::create(['name' => 'Urgencias', 'slug' => 'urgencias-versiones']);
+        $minute = MeetingMinute::create([
+            'number' => '2026-V01', 'title' => 'Título inicial', 'area_id' => $area->id,
+            'created_by' => $user->id, 'held_at' => now(), 'status' => 'draft',
+        ]);
+
+        $this->actingAs($user)->put(route('minutes.update', $minute), [
+            'title' => 'Título corregido', 'held_at' => now()->format('Y-m-d H:i:s'),
+            'area_id' => $area->id, 'objective' => 'Objetivo actualizado',
+            'external_participant_names' => "Persona Uno\nPersona Dos",
+        ])->assertRedirect(route('minutes.show', $minute))->assertSessionHasNoErrors();
+        $this->assertSame('Título corregido', $minute->fresh()->title);
+        $this->assertCount(2, $minute->fresh()->external_participants);
+
+        $this->actingAs($user)->post(route('minutes.generate', $minute))->assertSessionHasNoErrors();
+        $this->actingAs($user)->post(route('minutes.generate', $minute))->assertSessionHasNoErrors();
+        $versions = $minute->fresh()->documentVersions;
+        $this->assertEquals([2, 1], $versions->pluck('version')->all());
+        Storage::disk('local')->assertExists($versions[0]->path);
+        Storage::disk('local')->assertExists($versions[1]->path);
     }
 
     public function test_institutional_excel_is_read_without_ai_and_prefills_the_finding(): void

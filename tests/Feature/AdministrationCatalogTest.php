@@ -7,6 +7,8 @@ use App\Models\FindingSource;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdministrationCatalogTest extends TestCase
@@ -131,6 +133,23 @@ class AdministrationCatalogTest extends TestCase
         $this->assertSame('both', $organization->fresh()->approval_policy);
         $this->assertDatabaseHas('organization_approvers', ['user_id' => $quality->id, 'approval_type' => 'quality']);
         $this->assertDatabaseHas('organization_approvers', ['user_id' => $medical->id, 'approval_type' => 'medical']);
+    }
+
+    public function test_administrator_can_upload_an_organization_minute_template(): void
+    {
+        Storage::fake('local');
+        $organization = Organization::create([
+            'name' => 'Organización', 'slug' => 'organizacion-plantilla', 'is_active' => true,
+        ]);
+        $administrator = User::factory()->create(['organization_id' => $organization->id, 'role' => 'administrator']);
+
+        $this->actingAs($administrator)->put(route('minute-template.update'), [
+            'template' => UploadedFile::fake()->create('formato-acta.docx', 20, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $organization->refresh();
+        $this->assertSame('formato-acta.docx', $organization->minute_template_name);
+        Storage::disk('local')->assertExists($organization->minute_template_path);
     }
 
     public function test_administrator_can_configure_reminders_for_their_organization(): void

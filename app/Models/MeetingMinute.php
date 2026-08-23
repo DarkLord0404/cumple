@@ -39,4 +39,9 @@ class MeetingMinute extends Model
     {
         return $this->hasMany(Task::class);
     }
+
+    public function documentVersions(): HasMany
+    {
+        return $this->hasMany(MinuteDocumentVersion::class)->latest('version');
+    }
 }
