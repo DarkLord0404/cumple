@@ -9,17 +9,6 @@ use Illuminate\Validation\Rule;
 
 class CaseAnalysisController extends Controller
 {
-    private const CAUSE_CATEGORIES = [
-        'personal' => 'Personal, habilidad o técnica',
-        'protocols' => 'Adherencia a protocolos o guías',
-        'communication' => 'Comunicación, atención o conocimiento',
-        'equipment' => 'Equipos y tecnología',
-        'resources' => 'Recursos e insumos',
-        'procedures' => 'Procedimientos y documentación',
-        'environment' => 'Entorno e infraestructura',
-        'measurement' => 'Supervisión, medición e indicadores',
-    ];
-
     public function updatePrioritization(Request $request, ImprovementCase $case): RedirectResponse
     {
         $data = $request->validate([
@@ -49,11 +38,15 @@ class CaseAnalysisController extends Controller
             $rules['whys'] = ['required', 'array', 'size:5'];
             $rules['whys.*'] = ['required', 'string'];
         } else {
+            $causeCategories = config('cause_analysis');
             $rules['cause_categories'] = ['required', 'array', 'min:1'];
-            $rules['cause_categories.*'] = ['string', Rule::in(array_keys(self::CAUSE_CATEGORIES))];
+            $rules['cause_categories.*'] = ['string', Rule::in(array_keys($causeCategories))];
+            $rules['cause_items'] = ['required', 'array'];
             $rules['cause_descriptions'] = ['required', 'array'];
             foreach ($request->input('cause_categories', []) as $category) {
-                if (isset(self::CAUSE_CATEGORIES[$category])) {
+                if (isset($causeCategories[$category])) {
+                    $rules["cause_items.{$category}"] = ['required', 'array', 'min:1'];
+                    $rules["cause_items.{$category}.*"] = ['string', Rule::in(array_keys($causeCategories[$category]['causes']))];
                     $rules["cause_descriptions.{$category}"] = ['required', 'string'];
                 }
             }
@@ -63,7 +56,11 @@ class CaseAnalysisController extends Controller
             ? ['whys' => $data['whys']]
             : ['causes' => collect($data['cause_categories'])->map(fn ($category) => [
                 'id' => $category,
-                'category' => self::CAUSE_CATEGORIES[$category],
+                'category' => $causeCategories[$category]['label'],
+                'selected_causes' => collect($data['cause_items'][$category])->map(fn ($cause) => [
+                    'id' => $cause,
+                    'label' => $causeCategories[$category]['causes'][$cause],
+                ])->values()->all(),
                 'description' => $data['cause_descriptions'][$category],
             ])->values()->all()];
         $case->update([

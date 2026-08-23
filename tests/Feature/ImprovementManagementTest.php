@@ -99,6 +99,10 @@ class ImprovementManagementTest extends TestCase
         $this->actingAs($creator)->patch(route('cases.analysis.update', $case), [
             'immediate_correction' => 'Contención inicial',
             'cause_categories' => ['personal', 'procedures'],
+            'cause_items' => [
+                'personal' => ['protocol_adherence', 'lack_knowledge'],
+                'procedures' => ['not_documented'],
+            ],
             'cause_descriptions' => [
                 'personal' => 'El equipo no conocía el procedimiento.',
                 'procedures' => 'El documento no definía el responsable.',
@@ -107,8 +111,10 @@ class ImprovementManagementTest extends TestCase
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         $causes = $case->fresh()->analysis_data['causes'];
-        $this->assertSame('Personal, habilidad o técnica', $causes[0]['category']);
+        $this->assertSame('Personal', $causes[0]['category']);
         $this->assertSame('El documento no definía el responsable.', $causes[1]['description']);
+        $this->assertSame('Adherencia a protocolos, procesos o guías', $causes[0]['selected_causes'][0]['label']);
+        $this->assertSame('No está documentado el protocolo o guía', $causes[1]['selected_causes'][0]['label']);
     }
 
     public function test_prioritization_automatically_selects_the_analysis_method(): void
