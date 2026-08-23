@@ -6,6 +6,7 @@ use App\Models\Area;
 use App\Models\FindingSource;
 use App\Models\ImprovementCase;
 use App\Models\MeetingMinute;
+use App\Models\OfficialDocument;
 use App\Models\Organization;
 use App\Models\Task;
 use App\Models\User;
@@ -431,6 +432,61 @@ class ImprovementManagementTest extends TestCase
         $this->assertSame('Persona reportante', $case->reported_person_name);
         $this->assertCount(1, $case->documents);
         Storage::disk('local')->assertExists($case->documents->first()->path);
+    }
+
+    public function test_institutional_working_copy_is_generated_without_modifying_the_original(): void
+    {
+        Storage::fake('local');
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $case->update([
+            'institutional_consecutive' => 'NC-TEST-001', 'reported_at' => '2026-08-23',
+            'analysis_method' => 'five_whys', 'immediate_correction' => 'Contener el hallazgo.',
+            'root_cause' => 'Falta de seguimiento.',
+            'analysis_data' => ['whys' => ['Respuesta uno', 'Respuesta dos', 'Respuesta tres', 'Respuesta cuatro', 'Respuesta cinco']],
+            'urgency_score' => 2, 'scope_score' => 2, 'evolution_score' => 1, 'priority_score' => 5,
+        ]);
+        foreach (range(1, 4) as $number) {
+            Task::forceCreate([
+                'organization_id' => $case->organization_id, 'improvement_case_id' => $case->id,
+                'area_id' => $case->reporting_area_id, 'code' => "DOC-{$number}", 'title' => "Acción {$number}",
+                'expected_result' => "Evidencia {$number}", 'created_by' => $creator->id,
+                'assigned_to' => $responsible->id, 'assignee_type' => 'internal', 'priority' => 'medium',
+                'status' => 'pending', 'progress' => 0, 'due_at' => now()->addDays($number),
+            ]);
+        }
+        $originalPath = "official-documents/{$case->id}/original.xlsx";
+        Storage::disk('local')->makeDirectory(dirname($originalPath));
+        $template = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+        $template->getActiveSheet()->setTitle('REPORTE');
+        $analysis = $template->createSheet()->setTitle('ANALISIS CINCO POR QUÉ');
+        foreach (range(30, 32) as $row) {
+            foreach (['A:E', 'F:G', 'H:J', 'K:L'] as $columns) {
+                [$start, $end] = explode(':', $columns);
+                $analysis->mergeCells("{$start}{$row}:{$end}{$row}");
+            }
+        }
+        $template->createSheet()->setTitle('ANALISIS CAUSA EFECTO');
+        \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($template, 'Xlsx')->save(Storage::disk('local')->path($originalPath));
+        $original = $case->documents()->create([
+            'uploaded_by' => $creator->id, 'document_stage' => 'original', 'document_type' => 'finding_report',
+            'disk' => 'local', 'path' => $originalPath, 'original_name' => 'original.xlsx',
+            'mime_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'size' => Storage::disk('local')->size($originalPath),
+        ]);
+        $originalHash = hash('sha256', Storage::disk('local')->get($originalPath));
+
+        $this->actingAs($creator)->post(route('cases.documents.generate', $case))
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        $working = OfficialDocument::where('document_stage', 'working')->firstOrFail();
+        Storage::disk('local')->assertExists($working->path);
+        $this->assertSame($originalHash, hash('sha256', Storage::disk('local')->get($originalPath)));
+        $workbook = \PhpOffice\PhpSpreadsheet\IOFactory::load(Storage::disk('local')->path($working->path));
+        $this->assertSame('NC-TEST-001', $workbook->getSheetByName('REPORTE')->getCell('K2')->getValue());
+        $this->assertSame('Respuesta cinco', $workbook->getSheetByName('ANALISIS CINCO POR QUÉ')->getCell('H13')->getValue());
+        $this->assertStringContainsString('Acción 4', $workbook->getSheetByName('ANALISIS CINCO POR QUÉ')->getCell('A33')->getValue());
+        $this->assertStringContainsString('Evidencia esperada: Evidencia 4', $workbook->getSheetByName('ANALISIS CINCO POR QUÉ')->getCell('K33')->getValue());
+        $this->assertSame($original->id, $case->documents()->where('document_stage', 'original')->value('id'));
     }
 
     public function test_dashboard_can_filter_tasks_by_search_text(): void

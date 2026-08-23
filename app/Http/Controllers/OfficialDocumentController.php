@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ImprovementCase;
 use App\Models\OfficialDocument;
+use App\Services\InstitutionalFindingWorkCopy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +13,30 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OfficialDocumentController extends Controller
 {
+    public function generate(Request $request, ImprovementCase $case, InstitutionalFindingWorkCopy $generator): RedirectResponse
+    {
+        $original = $case->documents()->where('document_stage', 'original')
+            ->where(fn ($documents) => $documents
+                ->whereRaw('LOWER(original_name) LIKE ?', ['%.xlsx'])
+                ->orWhereRaw('LOWER(original_name) LIKE ?', ['%.xls']))
+            ->latest()->first();
+        if (! $original) {
+            return back()->withErrors(['document' => 'Adjunta primero el Excel institucional original.']);
+        }
+        $version = $case->documents()->where('document_stage', 'working')->count() + 1;
+        $generated = $generator->generate($case, $original, $version);
+        $case->documents()->create([
+            'uploaded_by' => $request->user()->id, 'document_stage' => 'working',
+            'document_type' => $original->document_type, 'disk' => 'local',
+            'path' => $generated['path'], 'original_name' => $generated['name'],
+            'mime_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'size' => Storage::disk('local')->size($generated['path']),
+            'notes' => "Copia de trabajo generada desde {$original->original_name}; el original no fue modificado.",
+        ]);
+
+        return back()->with('status', "Copia de trabajo v{$version} generada correctamente.");
+    }
+
     public function store(Request $request, ImprovementCase $case): RedirectResponse
     {
         $data = $request->validate([

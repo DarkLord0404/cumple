@@ -48,6 +48,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('hallazgos/{case}/analisis', [CaseAnalysisController::class, 'updateAnalysis'])->name('cases.analysis.update');
     Route::patch('hallazgos/{case}/eficacia', [CaseEffectivenessController::class, 'update'])->name('cases.effectiveness.update');
     Route::post('hallazgos/{case}/documentos', [OfficialDocumentController::class, 'store'])->name('cases.documents.store');
+    Route::post('hallazgos/{case}/documentos/generar', [OfficialDocumentController::class, 'generate'])->name('cases.documents.generate');
     Route::get('documentos/{document}/descargar', [OfficialDocumentController::class, 'download'])->name('documents.download');
     Route::get('acciones/{task}', [CaseTaskController::class, 'show'])->name('tasks.show');
     Route::patch('acciones/{task}', [CaseTaskController::class, 'update'])->name('tasks.update');
