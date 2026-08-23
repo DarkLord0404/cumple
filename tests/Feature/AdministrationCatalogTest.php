@@ -107,7 +107,7 @@ class AdministrationCatalogTest extends TestCase
             ->assertSee(route('administration.areas'))
             ->assertSee(route('administration.sources'));
         $this->actingAs($administrator)->get(route('administration.organization'))->assertOk()->assertSee('Organización modular');
-        $this->actingAs($administrator)->get(route('administration.areas'))->assertOk()->assertSee('Nueva área o servicio');
+        $this->actingAs($administrator)->get(route('administration.areas'))->assertOk()->assertSee('Crear área o servicio');
         $this->actingAs($administrator)->get(route('administration.sources'))->assertOk()->assertSee('Nueva fuente');
     }
 
