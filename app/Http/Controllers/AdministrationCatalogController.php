@@ -75,6 +75,44 @@ class AdministrationCatalogController extends Controller
         ]);
     }
 
+    public function kairo(Request $request): View
+    {
+        $this->authorizeAdministrator($request);
+        $organization = $request->user()->organization;
+
+        return view('administration.kairo', [
+            'organization' => $organization,
+            'users' => User::where('is_active', true)->orderBy('name')->get(),
+            'viewerIds' => DB::table('organization_kairo_minute_viewers')->where('organization_id', $organization->id)->pluck('user_id'),
+        ]);
+    }
+
+    public function updateKairo(Request $request): RedirectResponse
+    {
+        $this->authorizeAdministrator($request);
+        $organization = $request->user()->organization;
+        $data = $request->validate([
+            'kairo_minute_visibility' => ['required', Rule::in(['administrators', 'selected', 'everyone'])],
+            'viewer_ids' => ['nullable', 'array'],
+            'viewer_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('organization_id', $organization->id)],
+        ]);
+        if ($data['kairo_minute_visibility'] === 'selected' && empty($data['viewer_ids'])) {
+            return back()->withErrors(['viewer_ids' => 'Selecciona al menos un usuario autorizado.'])->withInput();
+        }
+        DB::transaction(function () use ($organization, $data): void {
+            $organization->update(['kairo_minute_visibility' => $data['kairo_minute_visibility']]);
+            DB::table('organization_kairo_minute_viewers')->where('organization_id', $organization->id)->delete();
+            foreach ($data['viewer_ids'] ?? [] as $userId) {
+                DB::table('organization_kairo_minute_viewers')->insert([
+                    'organization_id' => $organization->id, 'user_id' => $userId,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        });
+
+        return back()->with('status', 'Visibilidad de las actas de Kairo actualizada.');
+    }
+
     public function updateApprovals(Request $request): RedirectResponse
     {
         $this->authorizeAdministrator($request);

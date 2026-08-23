@@ -60,9 +60,11 @@ Route::middleware('auth')->group(function () {
     Route::get('administracion/fuentes', [AdministrationCatalogController::class, 'sources'])->name('administration.sources');
     Route::get('administracion/recordatorios', [AdministrationCatalogController::class, 'reminders'])->name('administration.reminders');
     Route::get('administracion/aprobaciones', [AdministrationCatalogController::class, 'approvals'])->name('administration.approvals');
+    Route::get('administracion/integracion-kairo', [AdministrationCatalogController::class, 'kairo'])->name('administration.kairo');
     Route::patch('administracion/organizacion', [AdministrationCatalogController::class, 'updateOrganization'])->name('organization.update');
     Route::patch('administracion/recordatorios', [AdministrationCatalogController::class, 'updateReminders'])->name('reminders.update');
     Route::patch('administracion/aprobaciones', [AdministrationCatalogController::class, 'updateApprovals'])->name('approvals.update');
+    Route::patch('administracion/integracion-kairo', [AdministrationCatalogController::class, 'updateKairo'])->name('kairo.update');
     Route::get('administracion/plantilla-actas', [MinuteTemplateController::class, 'edit'])->name('administration.minute-template');
     Route::put('administracion/plantilla-actas', [MinuteTemplateController::class, 'update'])->name('minute-template.update');
     Route::delete('administracion/plantilla-actas', [MinuteTemplateController::class, 'destroy'])->name('minute-template.destroy');

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\IntegrationConnection;
 use App\Models\MeetingMinute;
 use App\Models\User;
+use App\Services\KairoMinutesParser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,7 @@ use Illuminate\Support\Str;
 
 class KairoMeetingImportController extends Controller
 {
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(Request $request, KairoMinutesParser $parser): JsonResponse
     {
         $token = $request->bearerToken();
         abort_unless(is_string($token) && strlen($token) >= 40, 401, 'Credencial de integración ausente.');
@@ -38,20 +39,27 @@ class KairoMeetingImportController extends Controller
             'participants.*.email' => ['nullable', 'email', 'max:255'],
         ]);
 
+        $parsed = $parser->parse($data['minutes_markdown'] ?? null);
+        $participants = collect($data['participants'] ?? [])->concat(
+            collect($parsed['participants'])->map(fn ($name) => ['name' => $name])
+        )->unique(fn ($participant) => Str::lower(Str::ascii($participant['name'])))->values()->all();
         [$internalIds, $externalParticipants] = $this->matchParticipants(
             $connection->organization_id,
-            $data['participants'] ?? []
+            $participants
         );
 
-        $minute = DB::transaction(function () use ($connection, $data, $internalIds, $externalParticipants): MeetingMinute {
-            $minute = MeetingMinute::withoutGlobalScopes()->updateOrCreate(
+        $minute = DB::transaction(function () use ($connection, $data, $parsed, $internalIds, $externalParticipants): MeetingMinute {
+            $minute = MeetingMinute::withoutGlobalScopes()->firstOrNew(
                 [
                     'organization_id' => $connection->organization_id,
                     'source_system' => 'kairo',
                     'external_reference' => $data['external_reference'],
-                ],
-                [
-                    'number' => 'KAIRO-'.now()->format('Y').'-'.Str::upper(Str::random(6)),
+                ]
+            );
+            if (! $minute->exists) {
+                $minute->number = 'KAIRO-'.now()->format('Y').'-'.Str::upper(Str::random(6));
+            }
+            $minute->fill([
                     'title' => $data['title'],
                     'meeting_type' => 'kairo',
                     'organizer' => $data['organizer'] ?? null,
@@ -59,11 +67,13 @@ class KairoMeetingImportController extends Controller
                     'held_at' => $data['held_at'],
                     'location' => $data['location'] ?? 'Google Meet',
                     'external_participants' => $externalParticipants,
-                    'development' => $data['minutes_markdown'] ?? null,
+                    'objective' => $parsed['objective'],
+                    'agenda' => $parsed['agenda'],
+                    'development' => $parsed['development'],
+                    'decisions' => $parsed['decisions'],
                     'status' => 'draft',
-                    'external_payload' => $data,
-                ]
-            );
+                    'external_payload' => $data + ['parsed_commitments' => $parsed['commitments']],
+                ])->save();
             $minute->attendees()->sync($internalIds);
             $connection->forceFill(['last_used_at' => now()])->save();
 
@@ -76,6 +86,7 @@ class KairoMeetingImportController extends Controller
             'status' => 'draft',
             'matched_participants' => count($internalIds),
             'external_participants' => count($externalParticipants),
+            'proposed_commitments' => count($parsed['commitments']),
         ], $minute->wasRecentlyCreated ? 201 : 200);
     }
 

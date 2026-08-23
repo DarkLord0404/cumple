@@ -24,6 +24,18 @@ class InstitutionalMinuteDocument
 
         $processor = new TemplateProcessor($template);
         $processor->setMacroChars('{{', '}}');
+        $participantRows = $participants->map(fn ($participant) => [
+            'participante1' => $participant['name'],
+            'cargo1' => $participant['role'],
+        ])->all() ?: [['participante1' => '', 'cargo1' => '']];
+        $commitmentRows = $tasks->map(fn ($task, $index) => [
+            'compromisoNumero' => (string) ($index + 1).'.',
+            'compromiso1' => $task->title,
+            'responsable1' => $task->responsible_name,
+            'fecha1' => $task->due_at?->format('d/m/Y') ?? '',
+        ])->all() ?: [['compromisoNumero' => '1.', 'compromiso1' => '', 'responsable1' => '', 'fecha1' => '']];
+        $processor->cloneRowAndSetValues('participante1', $participantRows);
+        $processor->cloneRowAndSetValues('compromiso1', $commitmentRows);
         $processor->setValues([
             'fecha' => $minute->held_at->format('d/m/Y'),
             'hora' => $minute->held_at->format('H:i'),
@@ -39,12 +51,7 @@ class InstitutionalMinuteDocument
             'numMani' => $minute->title,
             'nomPaciente' => '', 'numDocumento' => '',
             'nomMedico' => data_get($participants, '0.name', ''),
-            'participante1' => data_get($participants, '0.name', ''), 'cargo1' => data_get($participants, '0.role', ''),
-            'participante2' => data_get($participants, '1.name', ''), 'cargo2' => data_get($participants, '1.role', ''),
-            'participante3' => data_get($participants, '2.name', ''), 'cargo3' => data_get($participants, '2.role', ''),
             'compromiso' => data_get($tasks, '0.title', ''),
-            'compromiso1' => data_get($tasks, '0.title', ''), 'responsable1' => $tasks->get(0)?->responsible_name ?? '', 'fecha1' => $tasks->get(0)?->due_at?->format('d/m/Y') ?? '',
-            'compromiso2' => data_get($tasks, '1.title', ''), 'responsable2' => $tasks->get(1)?->responsible_name ?? '', 'fecha2' => $tasks->get(1)?->due_at?->format('d/m/Y') ?? '',
         ]);
         $directory = "minutes/{$minute->id}";
         Storage::disk('local')->makeDirectory($directory);

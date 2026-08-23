@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
 use App\Services\InstitutionalMinuteDocument;
+use App\Services\KairoMinuteVisibility;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
@@ -21,9 +22,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MeetingMinuteController extends Controller
 {
-    public function index(): View
+    public function __construct(private readonly KairoMinuteVisibility $visibility) {}
+
+    public function index(Request $request): View
     {
-        return view('minutes.index', ['minutes' => MeetingMinute::with(['area', 'tasks'])->latest('held_at')->paginate(20)]);
+        $query = MeetingMinute::with(['area', 'tasks'])->latest('held_at');
+        return view('minutes.index', ['minutes' => $this->visibility->apply($query, $request->user())->paginate(20)]);
     }
 
     public function create(): View
@@ -53,11 +57,13 @@ class MeetingMinuteController extends Controller
 
     public function show(MeetingMinute $minute): View
     {
+        $this->authorizeVisibility($minute);
         return view('minutes.show', ['minute' => $minute->load(['area', 'attendees', 'tasks.assignee', 'tasks.assignees', 'documentVersions.generator']), 'users' => User::where('is_active', true)->orderBy('name')->get()]);
     }
 
     public function edit(MeetingMinute $minute): View
     {
+        $this->authorizeVisibility($minute);
         return view('minutes.edit', [
             'minute' => $minute->load('attendees'),
             'areas' => Area::where('is_active', true)->orderBy('name')->get(),
@@ -67,6 +73,7 @@ class MeetingMinuteController extends Controller
 
     public function update(Request $request, MeetingMinute $minute): RedirectResponse
     {
+        $this->authorizeVisibility($minute);
         $data = $this->validatedMinute($request);
         $external = collect(preg_split('/\r\n|\r|\n/', $data['external_participant_names'] ?? ''))->filter()->map(fn ($name) => ['name' => trim($name)])->values()->all();
         $minute->update(collect($data)->except(['attendees', 'external_participant_names'])->all() + [
@@ -79,6 +86,7 @@ class MeetingMinuteController extends Controller
 
     public function addCommitment(Request $request, MeetingMinute $minute): RedirectResponse
     {
+        $this->authorizeVisibility($minute);
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'], 'assignee_type' => ['required', Rule::in(['internal', 'external'])],
             'assigned_to' => ['nullable', Rule::exists('users', 'id')->where('organization_id', $request->user()->organization_id)], 'assignee_ids' => ['nullable', 'array'],
@@ -105,6 +113,7 @@ class MeetingMinuteController extends Controller
 
     public function updateCommitment(Request $request, MeetingMinute $minute, Task $task): RedirectResponse
     {
+        $this->authorizeVisibility($minute);
         abort_unless($task->meeting_minute_id === $minute->id, 404);
         abort_if($task->status === 'completed', 422, 'Un compromiso cerrado no puede modificarse.');
         $data = $request->validate([
@@ -134,6 +143,7 @@ class MeetingMinuteController extends Controller
 
     public function destroyCommitment(MeetingMinute $minute, Task $task): RedirectResponse
     {
+        $this->authorizeVisibility($minute);
         abort_unless($task->meeting_minute_id === $minute->id, 404);
         abort_if(in_array($task->status, ['in_review', 'completed'], true), 422, 'No se puede eliminar un compromiso enviado a revisión o cerrado.');
         $task->delete();
@@ -143,6 +153,7 @@ class MeetingMinuteController extends Controller
 
     public function generate(MeetingMinute $minute, InstitutionalMinuteDocument $documents): RedirectResponse
     {
+        $this->authorizeVisibility($minute);
         $version = ($minute->documentVersions()->max('version') ?? 0) + 1;
         $path = $documents->generate($minute, $version);
         $minute->documentVersions()->create([
@@ -157,6 +168,7 @@ class MeetingMinuteController extends Controller
 
     public function download(MeetingMinute $minute): StreamedResponse
     {
+        $this->authorizeVisibility($minute);
         abort_unless($minute->generated_document_path && Storage::disk('local')->exists($minute->generated_document_path), 404);
 
         return Storage::disk('local')->download($minute->generated_document_path, "acta-{$minute->number}.docx");
@@ -164,6 +176,7 @@ class MeetingMinuteController extends Controller
 
     public function downloadVersion(MeetingMinute $minute, MinuteDocumentVersion $version): StreamedResponse
     {
+        $this->authorizeVisibility($minute);
         abort_unless($version->meeting_minute_id === $minute->id && Storage::disk($version->disk)->exists($version->path), 404);
 
         return Storage::disk($version->disk)->download($version->path, $version->original_name);
@@ -179,5 +192,10 @@ class MeetingMinuteController extends Controller
             'attendees' => ['nullable', 'array'], 'attendees.*' => [Rule::exists('users', 'id')->where('organization_id', $request->user()->organization_id)],
             'external_participant_names' => ['nullable', 'string'],
         ]);
+    }
+
+    private function authorizeVisibility(MeetingMinute $minute): void
+    {
+        abort_unless($this->visibility->canView($minute, request()->user()), 403);
     }
 }
