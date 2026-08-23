@@ -55,8 +55,10 @@ Route::middleware('auth')->group(function () {
     Route::get('administracion/areas', [AdministrationCatalogController::class, 'areas'])->name('administration.areas');
     Route::get('administracion/fuentes', [AdministrationCatalogController::class, 'sources'])->name('administration.sources');
     Route::get('administracion/recordatorios', [AdministrationCatalogController::class, 'reminders'])->name('administration.reminders');
+    Route::get('administracion/aprobaciones', [AdministrationCatalogController::class, 'approvals'])->name('administration.approvals');
     Route::patch('administracion/organizacion', [AdministrationCatalogController::class, 'updateOrganization'])->name('organization.update');
     Route::patch('administracion/recordatorios', [AdministrationCatalogController::class, 'updateReminders'])->name('reminders.update');
+    Route::patch('administracion/aprobaciones', [AdministrationCatalogController::class, 'updateApprovals'])->name('approvals.update');
     Route::post('administracion/areas', [AdministrationCatalogController::class, 'storeArea'])->name('areas.store');
     Route::patch('administracion/areas/{area}', [AdministrationCatalogController::class, 'updateArea'])->name('areas.update');
     Route::delete('administracion/areas/{area}', [AdministrationCatalogController::class, 'destroyArea'])->name('areas.destroy');

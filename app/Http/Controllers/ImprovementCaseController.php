@@ -7,6 +7,7 @@ use App\Models\FindingSource;
 use App\Models\ImprovementCase;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\ApprovalWorkflow;
 use App\Services\InstitutionalFindingSpreadsheet;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -142,16 +143,15 @@ class ImprovementCaseController extends Controller
         return redirect()->route('cases.show', $case)->with('status', 'Hallazgo registrado. Ya puedes crear sus acciones.');
     }
 
-    public function show(ImprovementCase $case): View
+    public function show(ImprovementCase $case, ApprovalWorkflow $approvalWorkflow): View
     {
         return view('cases.show', [
             'case' => $case->load(['source', 'reportingArea', 'reportedArea', 'reporter', 'documents.uploader', 'tasks.assignee', 'tasks.assignees', 'tasks.evidences.uploader', 'tasks.qualityApprover', 'tasks.medicalApprover']),
             'users' => User::where('is_active', true)->with('area')->orderBy('name')->get(),
-            'canReviewAsQuality' => auth()->user()->role === 'quality',
-            'canReviewAsMedicalDirectorate' => auth()->user()->role === 'coordinator_medical' && (
-                auth()->user()->area()->where('slug', 'direccion-medica')->exists()
-                || Area::where('slug', 'direccion-medica')->where('coordinator_id', auth()->id())->exists()
-            ),
+            'canReviewAsQuality' => $approvalWorkflow->isApprover(auth()->user(), 'quality'),
+            'canReviewAsMedicalDirectorate' => $approvalWorkflow->isApprover(auth()->user(), 'medical'),
+            'requiresQuality' => $approvalWorkflow->requires(auth()->user()->organization, 'quality'),
+            'requiresMedical' => $approvalWorkflow->requires(auth()->user()->organization, 'medical'),
         ]);
     }
 

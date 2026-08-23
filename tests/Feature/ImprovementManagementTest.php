@@ -6,10 +6,12 @@ use App\Models\Area;
 use App\Models\FindingSource;
 use App\Models\ImprovementCase;
 use App\Models\MeetingMinute;
+use App\Models\Organization;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -111,6 +113,34 @@ class ImprovementManagementTest extends TestCase
         $this->assertSame(100, $task->progress);
         $this->assertNotNull($task->medical_approved_at);
         $this->assertSame('Acción cerrada', $quality->fresh()->unreadNotifications->first()?->data['title']);
+    }
+
+    public function test_configured_quality_only_workflow_closes_with_selected_user(): void
+    {
+        $organization = Organization::create([
+            'name' => 'Organización', 'slug' => 'flujo-calidad', 'is_active' => true, 'approval_policy' => 'quality',
+        ]);
+        $creator = User::factory()->create(['organization_id' => $organization->id, 'role' => 'administrator']);
+        $approver = User::factory()->create(['organization_id' => $organization->id, 'role' => 'collaborator']);
+        $area = Area::withoutGlobalScopes()->create([
+            'organization_id' => $organization->id, 'name' => 'Operaciones', 'slug' => 'operaciones-flujo', 'is_active' => true,
+        ]);
+        DB::table('organization_approvers')->insert([
+            'organization_id' => $organization->id, 'user_id' => $approver->id,
+            'approval_type' => 'quality', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $task = Task::withoutGlobalScopes()->forceCreate([
+            'organization_id' => $organization->id, 'area_id' => $area->id, 'code' => 'APR-001',
+            'title' => 'Acción configurable', 'created_by' => $creator->id, 'assignee_type' => 'internal',
+            'status' => 'in_review', 'progress' => 100, 'submitted_at' => now(), 'due_at' => now()->addWeek(),
+        ]);
+
+        $this->actingAs($approver)->patch(route('tasks.review', $task), ['decision' => 'approve'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('completed', $task->fresh()->status);
+        $this->assertNotNull($task->fresh()->quality_approved_at);
+        $this->assertNull($task->fresh()->medical_approved_at);
     }
 
     public function test_rejected_action_returns_to_ninety_percent_and_notifies_assignees_with_reason(): void

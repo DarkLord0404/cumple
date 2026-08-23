@@ -62,6 +62,52 @@ class AdministrationCatalogController extends Controller
         ]);
     }
 
+    public function approvals(Request $request): View
+    {
+        $this->authorizeAdministrator($request);
+        $organization = $request->user()->organization;
+
+        return view('administration.approvals', [
+            'organization' => $organization,
+            'users' => User::where('is_active', true)->with('area')->orderBy('name')->get(),
+            'qualityApproverIds' => DB::table('organization_approvers')->where('organization_id', $organization->id)->where('approval_type', 'quality')->pluck('user_id'),
+            'medicalApproverIds' => DB::table('organization_approvers')->where('organization_id', $organization->id)->where('approval_type', 'medical')->pluck('user_id'),
+        ]);
+    }
+
+    public function updateApprovals(Request $request): RedirectResponse
+    {
+        $this->authorizeAdministrator($request);
+        $organization = $request->user()->organization;
+        $data = $request->validate([
+            'approval_policy' => ['required', Rule::in(['both', 'quality', 'medical'])],
+            'quality_approver_ids' => ['nullable', 'array'],
+            'quality_approver_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('organization_id', $organization->id)],
+            'medical_approver_ids' => ['nullable', 'array'],
+            'medical_approver_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('organization_id', $organization->id)],
+        ]);
+        if (in_array($data['approval_policy'], ['both', 'quality'], true) && empty($data['quality_approver_ids'])) {
+            return back()->withErrors(['quality_approver_ids' => 'Selecciona al menos un aprobador de Calidad.'])->withInput();
+        }
+        if (in_array($data['approval_policy'], ['both', 'medical'], true) && empty($data['medical_approver_ids'])) {
+            return back()->withErrors(['medical_approver_ids' => 'Selecciona al menos un aprobador de Dirección Médica.'])->withInput();
+        }
+        DB::transaction(function () use ($organization, $data): void {
+            $organization->update(['approval_policy' => $data['approval_policy']]);
+            DB::table('organization_approvers')->where('organization_id', $organization->id)->delete();
+            foreach (['quality', 'medical'] as $type) {
+                foreach ($data["{$type}_approver_ids"] ?? [] as $userId) {
+                    DB::table('organization_approvers')->insert([
+                        'organization_id' => $organization->id, 'user_id' => $userId,
+                        'approval_type' => $type, 'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                }
+            }
+        });
+
+        return back()->with('status', 'Roles de aprobación actualizados.');
+    }
+
     public function updateReminders(Request $request): RedirectResponse
     {
         $this->authorizeAdministrator($request);

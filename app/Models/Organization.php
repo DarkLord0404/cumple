@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Organization extends Model
 {
-    protected $fillable = ['name', 'slug', 'contact_email', 'is_active', 'reminders_enabled', 'reminder_days', 'overdue_alerts_enabled', 'review_alerts_enabled'];
+    protected $fillable = ['name', 'slug', 'contact_email', 'is_active', 'reminders_enabled', 'reminder_days', 'overdue_alerts_enabled', 'review_alerts_enabled', 'approval_policy'];
 
     protected function casts(): array
     {
@@ -23,5 +23,15 @@ class Organization extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function qualityApprovers()
+    {
+        return $this->belongsToMany(User::class, 'organization_approvers')->wherePivot('approval_type', 'quality')->withTimestamps();
+    }
+
+    public function medicalApprovers()
+    {
+        return $this->belongsToMany(User::class, 'organization_approvers')->wherePivot('approval_type', 'medical')->withTimestamps();
     }
 }

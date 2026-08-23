@@ -110,6 +110,27 @@ class AdministrationCatalogTest extends TestCase
         $this->actingAs($administrator)->get(route('administration.areas'))->assertOk()->assertSee('Crear área o servicio');
         $this->actingAs($administrator)->get(route('administration.sources'))->assertOk()->assertSee('Nueva fuente');
         $this->actingAs($administrator)->get(route('administration.reminders'))->assertOk()->assertSee('Recordatorios y alertas');
+        $this->actingAs($administrator)->get(route('administration.approvals'))->assertOk()->assertSee('Roles y aprobaciones');
+    }
+
+    public function test_administrator_can_select_approvers_and_closure_policy(): void
+    {
+        $organization = Organization::create([
+            'name' => 'Organización', 'slug' => 'organizacion-aprobaciones', 'is_active' => true,
+        ]);
+        $administrator = User::factory()->create(['organization_id' => $organization->id, 'role' => 'administrator']);
+        $quality = User::factory()->create(['organization_id' => $organization->id, 'role' => 'collaborator']);
+        $medical = User::factory()->create(['organization_id' => $organization->id, 'role' => 'collaborator']);
+
+        $this->actingAs($administrator)->patch(route('approvals.update'), [
+            'approval_policy' => 'both',
+            'quality_approver_ids' => [$quality->id],
+            'medical_approver_ids' => [$medical->id],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('both', $organization->fresh()->approval_policy);
+        $this->assertDatabaseHas('organization_approvers', ['user_id' => $quality->id, 'approval_type' => 'quality']);
+        $this->assertDatabaseHas('organization_approvers', ['user_id' => $medical->id, 'approval_type' => 'medical']);
     }
 
     public function test_administrator_can_configure_reminders_for_their_organization(): void

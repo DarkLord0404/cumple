@@ -6,6 +6,7 @@ use App\Models\Area;
 use App\Models\ImprovementCase;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\ApprovalWorkflow;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,12 +14,9 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, ApprovalWorkflow $approvalWorkflow): View
     {
-        $canApprove = $request->user()->role === 'quality' || ($request->user()->role === 'coordinator_medical' && (
-            $request->user()->area()->where('slug', 'direccion-medica')->exists()
-            || Area::where('slug', 'direccion-medica')->where('coordinator_id', $request->user()->id)->exists()
-        ));
+        $canApprove = $approvalWorkflow->typeFor($request->user()) !== null;
         $tasks = Task::query()->with(['improvementCase', 'area', 'assignee', 'assignees']);
         $this->applyVisibility($tasks, $request);
         $availableTasks = clone $tasks;

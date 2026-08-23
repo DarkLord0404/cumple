@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Area;
 use App\Models\ImprovementCase;
 use App\Models\Task;
 use App\Models\TaskComment;
@@ -10,6 +9,7 @@ use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
 use App\Notifications\TaskCompletedNotification;
 use App\Notifications\TaskRejectedNotification;
+use App\Services\ApprovalWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
@@ -19,6 +19,8 @@ use Illuminate\View\View;
 
 class CaseTaskController extends Controller
 {
+    public function __construct(private readonly ApprovalWorkflow $approvalWorkflow) {}
+
     public function show(Request $request, Task $task): View
     {
         $this->authorizeTaskManagement($request, $task);
@@ -27,8 +29,10 @@ class CaseTaskController extends Controller
         return view('tasks.show', [
             'task' => $task->load(['improvementCase', 'minute', 'area', 'assignees', 'evidences.uploader', 'qualityApprover', 'medicalApprover', 'comments.author']),
             'users' => User::where('is_active', true)->with('area')->orderBy('name')->get(),
-            'canReviewAsQuality' => $user->role === 'quality',
-            'canReviewAsMedicalDirectorate' => $this->isMedicalDirectorateApprover($user),
+            'canReviewAsQuality' => $this->approvalWorkflow->isApprover($user, 'quality'),
+            'canReviewAsMedicalDirectorate' => $this->approvalWorkflow->isApprover($user, 'medical'),
+            'requiresQuality' => $this->approvalWorkflow->requires($user->organization, 'quality'),
+            'requiresMedical' => $this->approvalWorkflow->requires($user->organization, 'medical'),
         ]);
     }
 
@@ -123,8 +127,9 @@ class CaseTaskController extends Controller
             'review_notes' => ['nullable', 'required_if:decision,reject', 'string', 'max:2000'],
         ]);
         $user = $request->user();
-        $isQuality = $user->role === 'quality';
-        $isMedicalDirectorate = $this->isMedicalDirectorateApprover($user);
+        $approvalType = $this->approvalWorkflow->typeFor($user, $task);
+        $isQuality = $approvalType === 'quality';
+        $isMedicalDirectorate = $approvalType === 'medical';
         abort_unless($isQuality || $isMedicalDirectorate, 403, 'Solo Calidad o Dirección Médica pueden revisar esta acción.');
 
         if ($data['decision'] === 'reject') {
@@ -159,15 +164,15 @@ class CaseTaskController extends Controller
         $approvalLabel = $isQuality ? 'Calidad' : 'Dirección Médica';
         $this->recordActivity($task, $user, 'approved', "{$approvalLabel} aprobó la acción.", ['approval' => $isQuality ? 'quality' : 'medical']);
         $task->refresh();
-        if ($task->quality_approved_at && $task->medical_approved_at) {
+        if ($this->approvalWorkflow->canClose($task)) {
             $task->update(['status' => 'completed', 'progress' => 100, 'completed_at' => now()]);
-            $this->recordActivity($task, $user, 'completed', 'Acción cerrada con las dos aprobaciones requeridas.', ['progress' => 100]);
+            $this->recordActivity($task, $user, 'completed', 'Acción cerrada con las aprobaciones requeridas.', ['progress' => 100]);
             Notification::send(
                 User::where('role', 'quality')->where('is_active', true)->get(),
                 new TaskCompletedNotification($task, $user),
             );
 
-            return back()->with('status', 'Acción cerrada con aprobación de Calidad y Dirección Médica.');
+            return back()->with('status', 'Acción cerrada con las aprobaciones requeridas.');
         }
 
         return back()->with('status', 'Aprobación registrada. Falta la aprobación de la otra instancia.');
@@ -236,19 +241,11 @@ class CaseTaskController extends Controller
     {
         $user = $request->user();
         $allowed = in_array($user->role, ['administrator', 'quality'])
-            || $this->isMedicalDirectorateApprover($user)
+            || $this->approvalWorkflow->typeFor($user)
             || $task->assigned_to === $user->id
             || $task->assignees()->whereKey($user->id)->exists()
             || $task->created_by === $user->id
             || ($user->isCoordinator() && $user->area_id === $task->area_id);
         abort_unless($allowed, 403);
-    }
-
-    private function isMedicalDirectorateApprover(User $user): bool
-    {
-        return $user->role === 'coordinator_medical' && (
-            $user->area()->where('slug', 'direccion-medica')->exists()
-            || Area::where('slug', 'direccion-medica')->where('coordinator_id', $user->id)->exists()
-        );
     }
 }

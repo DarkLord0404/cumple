@@ -6,11 +6,17 @@ use App\Models\Organization;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskReminderNotification;
+use App\Services\ApprovalWorkflow;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class SendTaskReminders extends Command
 {
+    public function __construct(private readonly ApprovalWorkflow $approvalWorkflow)
+    {
+        parent::__construct();
+    }
+
     /**
      * The name and signature of the console command.
      *
@@ -81,13 +87,13 @@ class SendTaskReminders extends Command
                 foreach ($tasks as $task) {
                     $eventKey = ($task->submitted_at ?: $task->updated_at)->format('YmdHis');
                     $message = "La acción '{$task->title}' está esperando aprobación para su cierre.";
-                    if (! $task->quality_approved_at) {
-                        foreach (User::withoutGlobalScopes()->where('organization_id', $organization->id)->where('role', 'quality')->where('is_active', true)->get() as $user) {
+                    if ($this->approvalWorkflow->requires($organization, 'quality') && ! $task->quality_approved_at) {
+                        foreach ($this->approvalWorkflow->approvers($organization, 'quality') as $user) {
                             $sent += $this->notifyOnce($organization, $task, $user, 'review_quality', $eventKey, 'Acción pendiente de revisión de Calidad', $message);
                         }
                     }
-                    if (! $task->medical_approved_at) {
-                        foreach ($this->medicalApprovers($organization) as $user) {
+                    if ($this->approvalWorkflow->requires($organization, 'medical') && ! $task->medical_approved_at) {
+                        foreach ($this->approvalWorkflow->approvers($organization, 'medical') as $user) {
                             $sent += $this->notifyOnce($organization, $task, $user, 'review_medical', $eventKey, 'Acción pendiente de revisión de Dirección Médica', $message);
                         }
                     }
@@ -100,15 +106,6 @@ class SendTaskReminders extends Command
     private function responsibles(Task $task)
     {
         return $task->assignees->push($task->assignee)->filter()->unique('id');
-    }
-
-    private function medicalApprovers(Organization $organization)
-    {
-        return User::withoutGlobalScopes()->where('organization_id', $organization->id)->where('role', 'coordinator_medical')->where('is_active', true)
-            ->where(function ($query): void {
-                $query->whereHas('area', fn ($area) => $area->withoutGlobalScopes()->where('slug', 'direccion-medica'))
-                    ->orWhereHas('coordinatedAreas', fn ($area) => $area->withoutGlobalScopes()->where('slug', 'direccion-medica'));
-            })->get();
     }
 
     private function notifyOnce(Organization $organization, Task $task, User $user, string $type, string $eventKey, string $title, string $message): int
