@@ -10,11 +10,11 @@ class TaskComment extends Model
 {
     use BelongsToOrganization;
 
-    protected $fillable = ['task_id', 'user_id', 'body', 'is_internal'];
+    protected $fillable = ['task_id', 'user_id', 'body', 'event_type', 'metadata', 'is_internal'];
 
     protected function casts(): array
     {
-        return ['is_internal' => 'boolean'];
+        return ['is_internal' => 'boolean', 'metadata' => 'array'];
     }
 
     public function task(): BelongsTo

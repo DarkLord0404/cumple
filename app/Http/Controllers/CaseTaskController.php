@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Area;
 use App\Models\ImprovementCase;
 use App\Models\Task;
+use App\Models\TaskComment;
 use App\Models\User;
 use App\Notifications\TaskAssignedNotification;
 use App\Notifications\TaskCompletedNotification;
@@ -24,7 +25,7 @@ class CaseTaskController extends Controller
         $user = $request->user();
 
         return view('tasks.show', [
-            'task' => $task->load(['improvementCase', 'minute', 'area', 'assignees', 'evidences.uploader', 'qualityApprover', 'medicalApprover']),
+            'task' => $task->load(['improvementCase', 'minute', 'area', 'assignees', 'evidences.uploader', 'qualityApprover', 'medicalApprover', 'comments.author']),
             'users' => User::where('is_active', true)->with('area')->orderBy('name')->get(),
             'canReviewAsQuality' => $user->role === 'quality',
             'canReviewAsMedicalDirectorate' => $this->isMedicalDirectorateApprover($user),
@@ -67,6 +68,9 @@ class CaseTaskController extends Controller
             'status' => 'pending',
         ]);
         $task->assignees()->sync($assigneeIds);
+        $this->recordActivity($task, $request->user(), 'created', 'Acción creada y asignada.', [
+            'assignee_ids' => $assigneeIds->all(), 'progress' => 0, 'status' => 'pending',
+        ]);
         if ($assigneeIds->isNotEmpty()) {
             Notification::send(User::whereIn('id', $assigneeIds)->get(), new TaskAssignedNotification($task, $request->user()));
         }
@@ -77,6 +81,7 @@ class CaseTaskController extends Controller
     public function update(Request $request, Task $task): RedirectResponse
     {
         $this->authorizeTaskManagement($request, $task);
+        $previous = $task->only(['status', 'progress']);
         $data = $request->validate([
             'status' => ['required', Rule::in(['pending', 'in_progress', 'in_review', 'cancelled'])],
             'progress' => ['required', 'integer', 'min:0', 'max:100'],
@@ -98,6 +103,14 @@ class CaseTaskController extends Controller
             ];
         }
         $task->update($data);
+        $labels = ['pending' => 'Sin inicio', 'in_progress' => 'En ejecución', 'in_review' => 'En revisión', 'cancelled' => 'Cancelada'];
+        $this->recordActivity(
+            $task,
+            $request->user(),
+            $data['status'] === 'in_review' ? 'submitted' : 'progress_updated',
+            "Seguimiento actualizado: {$labels[$data['status']]} · {$data['progress']} %.",
+            ['before' => $previous, 'after' => ['status' => $data['status'], 'progress' => $data['progress']], 'note' => $data['review_notes'] ?? null],
+        );
 
         return back()->with('status', 'Seguimiento de la acción actualizado.');
     }
@@ -132,6 +145,9 @@ class CaseTaskController extends Controller
                 User::whereIn('id', $assigneeIds)->get(),
                 new TaskRejectedNotification($task, $user, $data['review_notes']),
             );
+            $this->recordActivity($task, $user, 'rejected', 'Acción devuelta al 90 %. Causal: '.$data['review_notes'], [
+                'reason' => $data['review_notes'], 'progress' => 90,
+            ]);
 
             return back()->with('status', 'La acción volvió al 90 % y se notificó la causal a sus responsables.');
         }
@@ -140,9 +156,12 @@ class CaseTaskController extends Controller
             ? ['quality_approved_by' => $user->id, 'quality_approved_at' => now()]
             : ['medical_approved_by' => $user->id, 'medical_approved_at' => now()];
         $task->update($approval + ['reviewed_by' => $user->id, 'review_notes' => $data['review_notes'] ?? $task->review_notes]);
+        $approvalLabel = $isQuality ? 'Calidad' : 'Dirección Médica';
+        $this->recordActivity($task, $user, 'approved', "{$approvalLabel} aprobó la acción.", ['approval' => $isQuality ? 'quality' : 'medical']);
         $task->refresh();
         if ($task->quality_approved_at && $task->medical_approved_at) {
             $task->update(['status' => 'completed', 'progress' => 100, 'completed_at' => now()]);
+            $this->recordActivity($task, $user, 'completed', 'Acción cerrada con las dos aprobaciones requeridas.', ['progress' => 100]);
             Notification::send(
                 User::where('role', 'quality')->where('is_active', true)->get(),
                 new TaskCompletedNotification($task, $user),
@@ -168,6 +187,10 @@ class CaseTaskController extends Controller
         if ($newAssignees->isNotEmpty()) {
             Notification::send(User::whereIn('id', $newAssignees)->get(), new TaskAssignedNotification($task, $request->user()));
         }
+        $names = User::whereIn('id', $data['assignee_ids'])->orderBy('name')->pluck('name')->join(', ');
+        $this->recordActivity($task, $request->user(), 'assignees_updated', 'Responsables actualizados: '.$names.'.', [
+            'before' => $previousAssignees->all(), 'after' => $data['assignee_ids'],
+        ]);
 
         return back()->with('status', 'Responsables actualizados.');
     }
@@ -178,13 +201,35 @@ class CaseTaskController extends Controller
         $data = $request->validate(['evidence' => ['required', 'file', 'max:25600'], 'description' => ['nullable', 'string', 'max:1000']]);
         $file = $request->file('evidence');
         $path = $file->store("evidence/{$task->id}");
-        $task->evidences()->create([
+        $evidence = $task->evidences()->create([
             'uploaded_by' => $request->user()->id, 'description' => $data['description'] ?? null,
             'disk' => 'local', 'path' => $path, 'original_name' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(), 'size' => $file->getSize(),
         ]);
+        $this->recordActivity($task, $request->user(), 'evidence_added', 'Evidencia adjuntada: '.$evidence->original_name.'.', [
+            'evidence_id' => $evidence->id, 'description' => $evidence->description,
+        ]);
 
         return back()->with('status', 'Evidencia adjuntada a la acción.');
+    }
+
+    public function storeComment(Request $request, Task $task): RedirectResponse
+    {
+        $this->authorizeTaskManagement($request, $task);
+        $data = $request->validate(['body' => ['required', 'string', 'max:3000']]);
+        $this->recordActivity($task, $request->user(), 'comment', $data['body']);
+
+        return back()->with('status', 'Comentario agregado al historial.');
+    }
+
+    private function recordActivity(Task $task, User $user, string $type, string $body, array $metadata = []): TaskComment
+    {
+        return $task->comments()->create([
+            'user_id' => $user->id,
+            'event_type' => $type,
+            'body' => $body,
+            'metadata' => $metadata ?: null,
+        ]);
     }
 
     private function authorizeTaskManagement(Request $request, Task $task): void

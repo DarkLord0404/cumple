@@ -173,6 +173,32 @@ class ImprovementManagementTest extends TestCase
         $this->assertNotNull($notification->fresh()->read_at);
     }
 
+    public function test_task_keeps_a_permanent_activity_timeline_and_comments(): void
+    {
+        Storage::fake('local');
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $task = $this->createTask($creator, $responsible, $case);
+
+        $this->actingAs($responsible)->patch(route('tasks.update', $task), [
+            'status' => 'in_progress', 'progress' => 35, 'review_notes' => 'Primer seguimiento',
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($responsible)->post(route('tasks.evidence.store', $task), [
+            'evidence' => UploadedFile::fake()->create('avance.pdf', 20, 'application/pdf'),
+            'description' => 'Soporte parcial',
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($responsible)->post(route('tasks.comments.store', $task), [
+            'body' => 'Se acordó completar el soporte restante el viernes.',
+        ])->assertSessionHasNoErrors();
+
+        $events = $task->comments()->orderBy('id')->get();
+        $this->assertEquals(['progress_updated', 'evidence_added', 'comment'], $events->pluck('event_type')->all());
+        $this->assertSame(35, $events->first()->metadata['after']['progress']);
+        $this->actingAs($responsible)->get(route('tasks.show', $task))
+            ->assertOk()
+            ->assertSee('Historial y trazabilidad')
+            ->assertSee('Se acordó completar el soporte restante el viernes.');
+    }
+
     public function test_action_cannot_be_submitted_for_review_without_evidence(): void
     {
         [$creator, $responsible, $case] = $this->caseFixture();

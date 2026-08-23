@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('acciones/{task}/responsables', [CaseTaskController::class, 'updateAssignees'])->name('tasks.assignees.update');
     Route::patch('acciones/{task}/revision', [CaseTaskController::class, 'review'])->name('tasks.review');
     Route::post('acciones/{task}/evidencias', [CaseTaskController::class, 'storeEvidence'])->name('tasks.evidence.store');
+    Route::post('acciones/{task}/comentarios', [CaseTaskController::class, 'storeComment'])->name('tasks.comments.store');
     Route::get('evidencias/{evidence}/descargar', [EvidenceController::class, 'download'])->name('evidence.download');
     Route::get('notificaciones', [NotificationController::class, 'index'])->name('notifications.index');
     Route::patch('notificaciones/leer-todas', [NotificationController::class, 'readAll'])->name('notifications.read-all');
