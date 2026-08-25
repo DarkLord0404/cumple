@@ -584,6 +584,18 @@ class ImprovementManagementTest extends TestCase
             ->assertSee('Texto final visible.');
     }
 
+    public function test_imported_action_detail_does_not_repeat_the_action_as_its_description(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $fullAction = str_repeat('Verificar el cumplimiento del procedimiento institucional. ', 6).'Cierre completo.';
+        $task = $this->createTask($creator, $responsible, $case, mb_substr($fullAction, 0, 250));
+        $task->update(['description' => $fullAction."\n\nResponsables en la matriz: Usuario.\nOrigen: MA2, fila 8."]);
+
+        $response = $this->actingAs($responsible)->get(route('tasks.show', $task));
+        $response->assertOk()->assertSee('Cierre completo.')->assertDontSee('Responsables en la matriz:');
+        $this->assertSame(1, substr_count($response->getContent(), 'Cierre completo.'));
+    }
+
     public function test_dashboard_only_shows_tasks_explicitly_assigned_to_the_user(): void
     {
         [$creator, $responsible, $case] = $this->caseFixture();

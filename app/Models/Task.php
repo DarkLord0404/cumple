@@ -80,6 +80,22 @@ class Task extends Model
         return mb_strlen($fullAction) > mb_strlen($this->title) ? $fullAction : $this->title;
     }
 
+    public function getDisplayDescriptionAttribute(): ?string
+    {
+        if (! $this->description || $this->display_title === $this->title) {
+            return $this->description;
+        }
+
+        $additionalInformation = Str::after($this->description, "\n\n");
+        $visibleLines = collect(preg_split('/\R/', $additionalInformation))
+            ->map(fn (string $line) => trim($line))
+            ->reject(fn (string $line) => $line === ''
+                || Str::startsWith($line, 'Responsables en la matriz:')
+                || Str::startsWith($line, 'Origen:'));
+
+        return $visibleLines->isEmpty() ? null : $visibleLines->join("\n");
+    }
+
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
