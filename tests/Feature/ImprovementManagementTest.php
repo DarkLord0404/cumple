@@ -572,6 +572,18 @@ class ImprovementManagementTest extends TestCase
             ->assertDontSee('Actualizar guía quirúrgica');
     }
 
+    public function test_dashboard_shows_the_complete_imported_action_instead_of_its_short_title(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $fullAction = str_repeat('Actualizar el procedimiento institucional con todos sus componentes. ', 6).'Texto final visible.';
+        $task = $this->createTask($creator, $responsible, $case, mb_substr($fullAction, 0, 250));
+        $task->update(['description' => $fullAction."\n\nResponsables en la matriz: Usuario."]);
+
+        $this->actingAs($responsible)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Texto final visible.');
+    }
+
     public function test_dashboard_only_shows_tasks_explicitly_assigned_to_the_user(): void
     {
         [$creator, $responsible, $case] = $this->caseFixture();

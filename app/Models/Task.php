@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Task extends Model
 {
@@ -66,6 +67,17 @@ class Task extends Model
         $names = $this->assignees->pluck('name');
 
         return $names->isNotEmpty() ? $names->join(', ') : ($this->assignee?->name ?: 'Sin asignar');
+    }
+
+    public function getDisplayTitleAttribute(): string
+    {
+        if (! $this->description || ! Str::startsWith($this->description, $this->title)) {
+            return $this->title;
+        }
+
+        $fullAction = trim(Str::before($this->description, "\n\n"));
+
+        return mb_strlen($fullAction) > mb_strlen($this->title) ? $fullAction : $this->title;
     }
 
     public function reviewer(): BelongsTo
