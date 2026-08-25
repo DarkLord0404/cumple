@@ -596,6 +596,19 @@ class ImprovementManagementTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), 'Cierre completo.'));
     }
 
+    public function test_imported_multiline_action_is_not_repeated_in_its_detail(): void
+    {
+        [$creator, $responsible, $case] = $this->caseFixture();
+        $fullAction = "● H1 — HACER\nImplementar espacios de refuerzo técnico y capacitar al personal.";
+        $task = $this->createTask($creator, $responsible, $case, '● H1 — HACER Implementar espacios de refuerzo técnico');
+        $task->update(['description' => $fullAction."\n\nResponsables en la matriz: Coordinación\nOrigen: MA4, fila 152."]);
+
+        $response = $this->actingAs($responsible)->get(route('tasks.show', $task));
+        $response->assertOk()->assertDontSee('Responsables en la matriz:');
+        $this->assertSame(1, substr_count($response->getContent(), 'Implementar espacios de refuerzo técnico'));
+        $this->assertNull($task->fresh()->display_description);
+    }
+
     public function test_dashboard_only_shows_tasks_explicitly_assigned_to_the_user(): void
     {
         [$creator, $responsible, $case] = $this->caseFixture();
